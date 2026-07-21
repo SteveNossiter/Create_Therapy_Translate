@@ -4,11 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create Therapy Session Notes</title>
+  <link rel="icon" href="data:,">
   <style>
-    :root { --primary: #007aff; --danger: #ff3b30; --success: #34c759; --bg: #f2f2f7; --text: #1c1c1e; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; color: var(--text); background: #ffffff; line-height: 1.5; }
+    :root { --primary: #007aff; --danger: #ff3b30; --success: #34c759; --bg: #f2f2f7; --text: #1c1c1e; --card-bg: #ffffff; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: var(--text); background: var(--bg); line-height: 1.5; }
     h1 { font-size: 24px; margin-bottom: 5px; }
     p.subtitle { color: #8e8e93; margin-top: 0; margin-bottom: 20px; }
+    
     .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
     button { padding: 12px 20px; font-size: 16px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -16,16 +18,23 @@
     #stopBtn { background-color: #ff9500; }
     #processBtn { background-color: var(--primary); }
     
-    .status-panel { background: var(--bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; display: flex; justify-content: space-between; }
+    .status-panel { background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; display: flex; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .status-text { font-weight: 500; }
     .timer { font-family: monospace; font-size: 16px; }
     
-    .output-section { border: 1px solid #e5e5ea; border-radius: 10px; padding: 20px; display: none; margin-bottom: 40px; }
-    .output-section.active { display: block; }
-    .export-controls { display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e5e5ea; flex-wrap: wrap; }
-    .export-btn { background-color: var(--success); padding: 8px 16px; font-size: 14px; border-radius: 8px; }
+    .windows-container { display: flex; flex-direction: column; gap: 20px; display: none; }
+    .windows-container.active { display: flex; }
     
-    #reportContent { white-space: pre-wrap; font-size: 15px; color: #3a3a3c; }
+    /* Responsive grid for larger screens */
+    @media (min-width: 768px) { .windows-container.active { flex-direction: row; align-items: stretch; } }
+    
+    .window-card { background: var(--card-bg); border-radius: 12px; padding: 20px; flex: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-width: 0; }
+    .window-card h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #e5e5ea; padding-bottom: 10px; }
+    
+    .export-controls { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+    .export-btn { background-color: var(--success); padding: 8px 12px; font-size: 13px; border-radius: 6px; }
+    
+    .content-box { white-space: pre-wrap; font-size: 14px; color: #3a3a3c; flex-grow: 1; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e5e5ea; overflow-y: auto; max-height: 600px; }
   </style>
 </head>
 <body>
@@ -34,18 +43,9 @@
   <p class="subtitle">Secure session transcription & SOAP report</p>
 
   <div class="controls">
-    <button id="recordBtn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="12"/></svg>
-      Record
-    </button>
-    <button id="stopBtn" disabled>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
-      Stop
-    </button>
-    <button id="processBtn" disabled>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      Generate Report
-    </button>
+    <button id="recordBtn">Record</button>
+    <button id="stopBtn" disabled>Stop</button>
+    <button id="processBtn" disabled>Generate</button>
   </div>
 
   <div class="status-panel">
@@ -53,18 +53,117 @@
     <span class="timer" id="timer">00:00:00</span>
   </div>
 
-  <div class="output-section" id="outputSection">
-    <div class="export-controls">
-      <button class="export-btn" id="shareBtn">Share Native</button>
-      <button class="export-btn" id="copyBtn">Copy Text</button>
-      <button class="export-btn" id="downloadBtn">Download .txt</button>
+  <div class="windows-container" id="windowsContainer">
+    <div class="window-card">
+      <h2>Transcript</h2>
+      <div class="export-controls">
+        <button class="export-btn" onclick="shareContent('transcriptContent', 'Session Transcript')">Share</button>
+        <button class="export-btn" onclick="copyContent('transcriptContent', this)">Copy</button>
+        <button class="export-btn" onclick="downloadContent('transcriptContent', 'Transcript')">Download</button>
+      </div>
+      <div id="transcriptContent" class="content-box">Awaiting data...</div>
     </div>
-    <div id="reportContent"></div>
+
+    <div class="window-card">
+      <h2>Clinical Report</h2>
+      <div class="export-controls">
+        <button class="export-btn" onclick="shareContent('reportContent', 'Clinical Report')">Share</button>
+        <button class="export-btn" onclick="copyContent('reportContent', this)">Copy</button>
+        <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
+      </div>
+      <div id="reportContent" class="content-box">Awaiting data...</div>
+    </div>
   </div>
 
   <script>
-    // System instruction injected directly from the frontend
-    const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
+    const WORKER_URL = 'https://raimble-api.soundlifeaudio.workers.dev/';
+    
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBase64 = '';
+    let mimeType = '';
+    let timerInterval;
+    let secondsElapsed = 0;
+
+    const recordBtn = document.getElementById('recordBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const processBtn = document.getElementById('processBtn');
+    const statusText = document.getElementById('status');
+    const timerDisplay = document.getElementById('timer');
+    
+    const windowsContainer = document.getElementById('windowsContainer');
+    const transcriptContent = document.getElementById('transcriptContent');
+    const reportContent = document.getElementById('reportContent');
+
+    function formatTime(sec) {
+      const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    recordBtn.addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 16000 });
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+        mediaRecorder.onstop = async () => {
+          clearInterval(timerInterval);
+          mimeType = mediaRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          audioBase64 = await blobToBase64(audioBlob);
+          statusText.innerText = "Audio captured. Ready to process.";
+          processBtn.disabled = false;
+        };
+
+        mediaRecorder.start(1000); 
+        secondsElapsed = 0;
+        timerInterval = setInterval(() => {
+          secondsElapsed++;
+          timerDisplay.innerText = formatTime(secondsElapsed);
+        }, 1000);
+
+        statusText.innerText = "Recording session...";
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+        processBtn.disabled = true;
+        windowsContainer.classList.remove('active');
+        
+      } catch (err) {
+        statusText.innerText = "Error: Microphone access denied.";
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+    });
+
+    processBtn.addEventListener('click', async () => {
+      if (!audioBase64) return;
+      
+      statusText.innerText = "Transcribing and generating report...";
+      processBtn.disabled = true;
+      windowsContainer.classList.add('active');
+      transcriptContent.innerText = "Processing audio...";
+      reportContent.innerText = "Analyzing transcript for clinical notes...";
+
+      // Generate the timestamp at the exact moment the button is clicked
+      const now = new Date();
+      const currentDate = now.toLocaleDateString('en-AU');
+      const currentTime = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false });
+      
+      // Temporary MVP Hardcode
+      const therapistName = "Silvana Nossiter";
+
+      const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
 
 Instructions:
 1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript.
@@ -134,109 +233,12 @@ Issues to Be Raised During Session
 Issues for Therapy Supervision
 [Any clinical risks or monitoring required, or "None identified"]`;
 
-    const WORKER_URL = 'https://raimble-api.soundlifeaudio.workers.dev/';
-    
-    let mediaRecorder;
-    let audioChunks = [];
-    let audioBase64 = '';
-    let mimeType = '';
-    
-    let timerInterval;
-    let secondsElapsed = 0;
-
-    const recordBtn = document.getElementById('recordBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const processBtn = document.getElementById('processBtn');
-    const statusText = document.getElementById('status');
-    const timerDisplay = document.getElementById('timer');
-    const outputSection = document.getElementById('outputSection');
-    const reportContent = document.getElementById('reportContent');
-
-    const shareBtn = document.getElementById('shareBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-
-    function formatTime(sec) {
-      const h = Math.floor(sec / 3600).toString().padStart(2, '0');
-      const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
-      const s = (sec % 60).toString().padStart(2, '0');
-      return `${h}:${m}:${s}`;
-    }
-
-    recordBtn.addEventListener('click', async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // Optimize for 1.5 hour recordings (~16kbps)
-        const options = { audioBitsPerSecond: 16000 };
-        mediaRecorder = new MediaRecorder(stream, options);
-        audioChunks = [];
-
-        mediaRecorder.ondataavailable = e => {
-          if (e.data.size > 0) audioChunks.push(e.data);
-        };
-
-        mediaRecorder.onstop = async () => {
-          clearInterval(timerInterval);
-          mimeType = mediaRecorder.mimeType || 'audio/webm';
-          const audioBlob = new Blob(audioChunks, { type: mimeType });
-          audioBase64 = await blobToBase64(audioBlob);
-          
-          statusText.innerText = "Audio captured & compressed. Ready to process.";
-          processBtn.disabled = false;
-        };
-
-        mediaRecorder.start(1000); 
-        
-        secondsElapsed = 0;
-        timerInterval = setInterval(() => {
-          secondsElapsed++;
-          timerDisplay.innerText = formatTime(secondsElapsed);
-        }, 1000);
-
-        statusText.innerText = "Recording session...";
-        recordBtn.disabled = true;
-        stopBtn.disabled = false;
-        processBtn.disabled = true;
-        outputSection.classList.remove('active');
-        
-      } catch (err) {
-        statusText.innerText = "Error: Microphone access denied.";
-      }
-    });
-
-    stopBtn.addEventListener('click', () => {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-      }
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-    });
-
-    processBtn.addEventListener('click', async () => {
-      if (!audioBase64) return;
-      const now = new Date();
-      // This will output format like: 22/07/2026
-      const currentDate = now.toLocaleDateString('en-AU'); 
-      // This will output format like: 09:31
-      const currentTime = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }); 
-      // Temporary hardcode for the MVP
-      const therapistName = "Silvana Nossiter";
-      statusText.innerText = "Transcribing and generating report...";
-      processBtn.disabled = true;
-      outputSection.classList.add('active');
-      reportContent.innerText = "Processing audio with Gemini 2.5. This may take a minute depending on recording length...";
-
-      // Construct the complete Gemini Payload here in the frontend
       const payload = {
-        system_instruction: {
-          parts: [{ text: SYSTEM_PROMPT }]
-        },
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{
           parts: [
             { inlineData: { mimeType: mimeType, data: audioBase64 } },
-            { text: "Process this session audio according to your system instructions." }
+            { text: "Process this session audio." }
           ]
         }]
       };
@@ -251,14 +253,22 @@ Issues for Therapy Supervision
         if (!response.ok) throw new Error('API Request Failed');
         
         const data = await response.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || data.text || "";
         
-        // Extract the generated text from Gemini's response structure
-        const reportText = data.candidates?.[0]?.content?.parts?.[0]?.text || data.text || "No report generated.";
+        const sections = rawText.split('|||');
         
-        reportContent.innerText = reportText;
-        statusText.innerText = "Report generated successfully.";
+        if (sections.length >= 2) {
+          transcriptContent.innerText = sections[0].trim();
+          reportContent.innerText = sections[1].trim();
+        } else {
+          transcriptContent.innerText = "Delimiter missing. Full output below:\n\n" + rawText;
+          reportContent.innerText = "See Transcript window.";
+        }
+        
+        statusText.innerText = "Success.";
       } catch (err) {
-        reportContent.innerText = "Error: " + err.message;
+        transcriptContent.innerText = "Error: " + err.message;
+        reportContent.innerText = "Failed.";
         statusText.innerText = "Processing failed.";
       }
       processBtn.disabled = false;
@@ -273,53 +283,41 @@ Issues for Therapy Supervision
       });
     }
 
-    // --- Export Features ---
-
-    // 1. Native OS Web Share API
-    shareBtn.addEventListener('click', async () => {
-      const text = reportContent.innerText;
+    async function shareContent(elementId, title) {
+      const text = document.getElementById(elementId).innerText;
       if (navigator.share) {
         try {
-          await navigator.share({
-            title: 'Create Therapy Session Report',
-            text: text,
-          });
-        } catch (err) {
-          console.log('Share canceled or failed', err);
-        }
+          await navigator.share({ title: title, text: text });
+        } catch (err) { console.log('Share canceled', err); }
       } else {
-        alert("Native Web Share is not supported on this browser or device.");
+        alert("Web Share not supported on this browser.");
       }
-    });
+    }
 
-    // 2. Copy to Clipboard
-    copyBtn.addEventListener('click', async () => {
-      const text = reportContent.innerText;
+    async function copyContent(elementId, btnElement) {
+      const text = document.getElementById(elementId).innerText;
       try {
         await navigator.clipboard.writeText(text);
-        const originalText = copyBtn.innerText;
-        copyBtn.innerText = "Copied!";
-        setTimeout(() => copyBtn.innerText = originalText, 2000);
-      } catch (err) {
-        alert("Failed to copy text.");
-      }
-    });
+        const originalText = btnElement.innerText;
+        btnElement.innerText = "Copied!";
+        setTimeout(() => btnElement.innerText = originalText, 2000);
+      } catch (err) { alert("Failed to copy text."); }
+    }
 
-    // 3. Download as Local File
-    downloadBtn.addEventListener('click', () => {
-      const text = reportContent.innerText;
+    function downloadContent(elementId, prefix) {
+      const text = document.getElementById(elementId).innerText;
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const dateStr = new Date().toISOString().split('T')[0];
       
       a.href = url;
-      a.download = `Session_Report_${dateStr}.txt`;
+      a.download = `${prefix}_${dateStr}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    });
+    }
   </script>
 </body>
 </html>
