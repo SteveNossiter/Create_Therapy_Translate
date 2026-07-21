@@ -64,31 +64,75 @@
 
   <script>
     // System instruction injected directly from the frontend
-    const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for a therapeutic practice. 
+    const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
 
 Instructions:
-1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript of the dialogue.
-2. Clinical Report (SOAP Format): Based on the transcript, generate a professional clinical session report using the standard SOAP structure.
+1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript.
+2. Clinical Report: Based on the transcript, generate a comprehensive clinical session report following the exact structure and headings provided below. 
 
-Provide your output strictly formatted like this:
+Use objective, professional, and clinical language. If a specific section's information is not mentioned in the audio (such as "Scales" or "HNC Late Cancellations"), leave it blank or write "N/A". 
 
-### 📝 Transcript
+You MUST format your exact response like this, using the three pipes (|||) as a separator:
+
 [Insert full translated English transcript here]
+|||
+Goals:
+[List assessment methods used, presenting issues, (+) goals, and (-) reduction targets]
 
-***
+Interventions:
+[Briefly list primary practical interventions/mediums used]
 
-### 📋 Clinical Session Report (SOAP)
-**Subjective:**
-[Client's reported emotional state and feelings]
+Scales:
+[List any scales used, or N/A]
 
-**Objective:**
-[Observable behaviors, affect, and creative/art-based interventions]
+HNC Late Cancellations:
+[Note any cancellations, or N/A]
 
-**Assessment:**
-[Clinical synthesis of presentation and progress]
+Session [X]/[Y]  [CLIENT_ID]  ${currentDate}_${currentTime}
+Patient had their session with ${therapistName}.
 
-**Plan:**
-[Next steps, homework, or focus areas]`;
+Summary of Client’s Narrative
+[Bullet points detailing the client's spoken history, current context, and stated goals]
+
+Client’s Behaviour
+[Bullet points detailing engagement, initiative, physical actions, and capacity for self-reflection]
+
+Client’s Feelings
+[Bullet points detailing expressed emotions, desires, and reported affect]
+
+Therapist’s Interventions
+[Bullet points detailing your specific actions, psychoeducation provided, and therapeutic framing]
+
+Client’s Response to Art Therapy
+[Bullet points detailing specific reactions to the creative medium, symbolic linking, and affect during artmaking]
+
+Evidence of Significant Departure from Anticipated Progress
+[Note any departures, or state "No significant departures"]
+
+Major Life Events
+[Bullet points of any recent or impending major life transitions]
+
+Change of Assessment/Plan
+[Bullet points detailing any shifts in session frequency or clinical focus]
+
+PROCESS
+
+Client Comments About Process
+[Bullet points detailing what the client said about the therapy/artmaking process itself]
+
+Therapist’s Observations
+[Bullet points detailing your clinical observations of their insight, symbolic thinking, and adaptability]
+
+NOTES FOR NEXT SESSION
+
+Agreement About Between-Session Activities
+[Homework or reflections set for the client]
+
+Issues to Be Raised During Session
+[Specific themes, mediums, or discussions to carry over to the next session]
+
+Issues for Therapy Supervision
+[Any clinical risks or monitoring required, or "None identified"]`;
 
     const WORKER_URL = 'https://raimble-api.soundlifeaudio.workers.dev/';
     
@@ -172,7 +216,13 @@ Provide your output strictly formatted like this:
 
     processBtn.addEventListener('click', async () => {
       if (!audioBase64) return;
-      
+      const now = new Date();
+      // This will output format like: 22/07/2026
+      const currentDate = now.toLocaleDateString('en-AU'); 
+      // This will output format like: 09:31
+      const currentTime = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }); 
+      // Temporary hardcode for the MVP
+      const therapistName = "Silvana Nossiter";
       statusText.innerText = "Transcribing and generating report...";
       processBtn.disabled = true;
       outputSection.classList.add('active');
