@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Therapy Session Notes</title>
+  <style>
+    :root { --primary: #007aff; --danger: #ff3b30; --success: #34c759; --bg: #f2f2f7; --text: #1c1c1e; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; color: var(--text); background: #ffffff; line-height: 1.5; }
+    h1 { font-size: 24px; margin-bottom: 5px; }
+    p.subtitle { color: #8e8e93; margin-top: 0; margin-bottom: 20px; }
+    .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    button { padding: 12px 20px; font-size: 16px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #recordBtn { background-color: var(--danger); }
+    #stopBtn { background-color: #ff9500; }
+    #processBtn { background-color: var(--primary); }
+    
+    .status-panel { background: var(--bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; display: flex; justify-content: space-between; }
+    .status-text { font-weight: 500; }
+    .timer { font-family: monospace; font-size: 16px; }
+    
+    .output-section { border: 1px solid #e5e5ea; border-radius: 10px; padding: 20px; display: none; margin-bottom: 40px; }
+    .output-section.active { display: block; }
+    .export-controls { display: flex; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e5e5ea; flex-wrap: wrap; }
+    .export-btn { background-color: var(--success); padding: 8px 16px; font-size: 14px; border-radius: 8px; }
+    
+    #reportContent { white-space: pre-wrap; font-size: 15px; color: #3a3a3c; }
+  </style>
+</head>
+<body>
+
+  <h1>Create Therapy Notes</h1>
+  <p class="subtitle">Secure session transcription & SOAP report</p>
+
+  <div class="controls">
+    <button id="recordBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="12"/></svg>
+      Record
+    </button>
+    <button id="stopBtn" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+      Stop
+    </button>
+    <button id="processBtn" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Generate Report
+    </button>
+  </div>
+
+  <div class="status-panel">
+    <span class="status-text" id="status">Ready to record.</span>
+    <span class="timer" id="timer">00:00:00</span>
+  </div>
+
+  <div class="output-section" id="outputSection">
+    <div class="export-controls">
+      <button class="export-btn" id="shareBtn">Share Native</button>
+      <button class="export-btn" id="copyBtn">Copy Text</button>
+      <button class="export-btn" id="downloadBtn">Download .txt</button>
+    </div>
+    <div id="reportContent"></div>
+  </div>
+
+  <script>
+    // System instruction injected directly from the frontend
+    const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for a therapeutic practice. 
+
+Instructions:
+1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript of the dialogue.
+2. Clinical Report (SOAP Format): Based on the transcript, generate a professional clinical session report using the standard SOAP structure.
+
+Provide your output strictly formatted like this:
+
+### 📝 Transcript
+[Insert full translated English transcript here]
+
+***
+
+### 📋 Clinical Session Report (SOAP)
+**Subjective:**
+[Client's reported emotional state and feelings]
+
+**Objective:**
+[Observable behaviors, affect, and creative/art-based interventions]
+
+**Assessment:**
+[Clinical synthesis of presentation and progress]
+
+**Plan:**
+[Next steps, homework, or focus areas]`;
+
+    const WORKER_URL = 'https://raimble-api.soundlifeaudio.workers.dev/';
+    
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBase64 = '';
+    let mimeType = '';
+    
+    let timerInterval;
+    let secondsElapsed = 0;
+
+    const recordBtn = document.getElementById('recordBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const processBtn = document.getElementById('processBtn');
+    const statusText = document.getElementById('status');
+    const timerDisplay = document.getElementById('timer');
+    const outputSection = document.getElementById('outputSection');
+    const reportContent = document.getElementById('reportContent');
+
+    const shareBtn = document.getElementById('shareBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    function formatTime(sec) {
+      const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    recordBtn.addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Optimize for 1.5 hour recordings (~16kbps)
+        const options = { audioBitsPerSecond: 16000 };
+        mediaRecorder = new MediaRecorder(stream, options);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          clearInterval(timerInterval);
+          mimeType = mediaRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          audioBase64 = await blobToBase64(audioBlob);
+          
+          statusText.innerText = "Audio captured & compressed. Ready to process.";
+          processBtn.disabled = false;
+        };
+
+        mediaRecorder.start(1000); 
+        
+        secondsElapsed = 0;
+        timerInterval = setInterval(() => {
+          secondsElapsed++;
+          timerDisplay.innerText = formatTime(secondsElapsed);
+        }, 1000);
+
+        statusText.innerText = "Recording session...";
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+        processBtn.disabled = true;
+        outputSection.classList.remove('active');
+        
+      } catch (err) {
+        statusText.innerText = "Error: Microphone access denied.";
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+    });
+
+    processBtn.addEventListener('click', async () => {
+      if (!audioBase64) return;
+      
+      statusText.innerText = "Transcribing and generating report...";
+      processBtn.disabled = true;
+      outputSection.classList.add('active');
+      reportContent.innerText = "Processing audio with Gemini 2.5. This may take a minute depending on recording length...";
+
+      // Construct the complete Gemini Payload here in the frontend
+      const payload = {
+        system_instruction: {
+          parts: [{ text: SYSTEM_PROMPT }]
+        },
+        contents: [{
+          parts: [
+            { inlineData: { mimeType: mimeType, data: audioBase64 } },
+            { text: "Process this session audio according to your system instructions." }
+          ]
+        }]
+      };
+
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error('API Request Failed');
+        
+        const data = await response.json();
+        
+        // Extract the generated text from Gemini's response structure
+        const reportText = data.candidates?.[0]?.content?.parts?.[0]?.text || data.text || "No report generated.";
+        
+        reportContent.innerText = reportText;
+        statusText.innerText = "Report generated successfully.";
+      } catch (err) {
+        reportContent.innerText = "Error: " + err.message;
+        statusText.innerText = "Processing failed.";
+      }
+      processBtn.disabled = false;
+    });
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // --- Export Features ---
+
+    // 1. Native OS Web Share API
+    shareBtn.addEventListener('click', async () => {
+      const text = reportContent.innerText;
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Create Therapy Session Report',
+            text: text,
+          });
+        } catch (err) {
+          console.log('Share canceled or failed', err);
+        }
+      } else {
+        alert("Native Web Share is not supported on this browser or device.");
+      }
+    });
+
+    // 2. Copy to Clipboard
+    copyBtn.addEventListener('click', async () => {
+      const text = reportContent.innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        const originalText = copyBtn.innerText;
+        copyBtn.innerText = "Copied!";
+        setTimeout(() => copyBtn.innerText = originalText, 2000);
+      } catch (err) {
+        alert("Failed to copy text.");
+      }
+    });
+
+    // 3. Download as Local File
+    downloadBtn.addEventListener('click', () => {
+      const text = reportContent.innerText;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      
+      a.href = url;
+      a.download = `Session_Report_${dateStr}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
