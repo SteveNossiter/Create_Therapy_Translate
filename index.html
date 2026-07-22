@@ -5,15 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create Therapy Session Notes</title>
   <link rel="icon" href="data:,">
+  
+  <!-- Load the Supabase Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root { --primary: #007aff; --danger: #ff3b30; --success: #34c759; --bg: #f2f2f7; --text: #1c1c1e; --card-bg: #ffffff; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: var(--text); background: var(--bg); line-height: 1.5; }
     h1 { font-size: 24px; margin-bottom: 5px; }
     p.subtitle { color: #8e8e93; margin-top: 0; margin-bottom: 20px; }
     
+    #loginScreen { max-width: 400px; margin: 60px auto; text-align: center; }
+    .input-field { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+    #loginError { color: var(--danger); font-size: 14px; margin-top: 10px; display: none; }
+    
+    #mainApp { display: none; }
+
     .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
     button { padding: 12px 20px; font-size: 16px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    #loginBtn { background-color: var(--primary); width: 100%; }
+    #logoutBtn { background-color: #8e8e93; padding: 8px 12px; font-size: 14px; position: absolute; top: 20px; right: 20px; }
+    
     #recordBtn { background-color: var(--danger); }
     #stopBtn { background-color: #ff9500; }
     #processBtn { background-color: var(--primary); }
@@ -25,7 +39,6 @@
     .windows-container { display: flex; flex-direction: column; gap: 20px; display: none; }
     .windows-container.active { display: flex; }
     
-    /* Responsive grid for larger screens */
     @media (min-width: 768px) { .windows-container.active { flex-direction: row; align-items: stretch; } }
     
     .window-card { background: var(--card-bg); border-radius: 12px; padding: 20px; flex: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-width: 0; }
@@ -39,43 +52,134 @@
 </head>
 <body>
 
-  <h1>Create Therapy Notes</h1>
-  <p class="subtitle">Secure session transcription & clinical report</p>
-
-  <div class="controls">
-    <button id="recordBtn">Record</button>
-    <button id="stopBtn" disabled>Stop</button>
-    <button id="processBtn" disabled>Generate</button>
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="window-card">
+    <h2>Clinic Login</h2>
+    <p class="subtitle" style="margin-bottom: 25px;">Secure Session Access</p>
+    <input type="email" id="emailInput" class="input-field" placeholder="Email Address">
+    <input type="password" id="passwordInput" class="input-field" placeholder="Password">
+    <button id="loginBtn">Log In</button>
+    <div id="loginError"></div>
   </div>
 
-  <div class="status-panel">
-    <span class="status-text" id="status">Ready to record.</span>
-    <span class="timer" id="timer">00:00:00</span>
-  </div>
+  <!-- MAIN APPLICATION -->
+  <div id="mainApp">
+    <button id="logoutBtn">Log Out</button>
+    <h1>Create Therapy Notes</h1>
+    <p class="subtitle">Secure session transcription & clinical report</p>
 
-  <div class="windows-container" id="windowsContainer">
-    <div class="window-card">
-      <h2>Transcript</h2>
-      <div class="export-controls">
-        <button class="export-btn" onclick="shareContent('transcriptContent', 'Session Transcript')">Share</button>
-        <button class="export-btn" onclick="copyContent('transcriptContent', this)">Copy</button>
-        <button class="export-btn" onclick="downloadContent('transcriptContent', 'Transcript')">Download</button>
-      </div>
-      <div id="transcriptContent" class="content-box">Awaiting data...</div>
+    <div class="controls">
+      <button id="recordBtn">Record</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="processBtn" disabled>Generate</button>
     </div>
 
-    <div class="window-card">
-      <h2>Clinical Report</h2>
-      <div class="export-controls">
-        <button class="export-btn" onclick="shareContent('reportContent', 'Clinical Report')">Share</button>
-        <button class="export-btn" onclick="copyContent('reportContent', this)">Copy</button>
-        <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
+    <div class="status-panel">
+      <span class="status-text" id="status">Ready to record.</span>
+      <span class="timer" id="timer">00:00:00</span>
+    </div>
+
+    <div class="windows-container" id="windowsContainer">
+      <div class="window-card">
+        <h2>Transcript</h2>
+        <div class="export-controls">
+          <button class="export-btn" onclick="shareContent('transcriptContent', 'Session Transcript')">Share</button>
+          <button class="export-btn" onclick="copyContent('transcriptContent', this)">Copy</button>
+          <button class="export-btn" onclick="downloadContent('transcriptContent', 'Transcript')">Download</button>
+        </div>
+        <div id="transcriptContent" class="content-box">Awaiting data...</div>
       </div>
-      <div id="reportContent" class="content-box">Awaiting data...</div>
+
+      <div class="window-card">
+        <h2>Clinical Report</h2>
+        <div class="export-controls">
+          <button class="export-btn" onclick="shareContent('reportContent', 'Clinical Report')">Share</button>
+          <button class="export-btn" onclick="copyContent('reportContent', this)">Copy</button>
+          <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
+        </div>
+        <div id="reportContent" class="content-box">Awaiting data...</div>
+      </div>
     </div>
   </div>
 
   <script>
+    // ---------------------------------------------------------
+    // SUPABASE CONFIGURATION (CLINICAL METHOD)
+    // ---------------------------------------------------------
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { storage: window.sessionStorage }
+    });
+
+    // ---------------------------------------------------------
+    // STATE VARIABLES
+    // ---------------------------------------------------------
+    let currentTherapistName = "Therapist";
+    let sessionStartTimeDate = null;
+    let sessionStopTimeDate = null;
+
+    // ---------------------------------------------------------
+    // AUTHENTICATION LOGIC
+    // ---------------------------------------------------------
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginError = document.getElementById('loginError');
+
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Retrieve display name from Supabase User Metadata, fallback to email if missing
+        currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
+        showApp();
+      }
+    }
+    checkSession();
+
+    loginBtn.addEventListener('click', async () => {
+      loginBtn.innerText = "Authenticating...";
+      loginBtn.disabled = true;
+      loginError.style.display = 'none';
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailInput.value,
+        password: passwordInput.value
+      });
+
+      if (error) {
+        loginError.innerText = error.message;
+        loginError.style.display = 'block';
+        loginBtn.innerText = "Log In";
+        loginBtn.disabled = false;
+      } else if (data.session) {
+        currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email;
+        showApp();
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      mainApp.style.display = 'none';
+      loginScreen.style.display = 'block';
+      emailInput.value = '';
+      passwordInput.value = '';
+      loginBtn.innerText = "Log In";
+      loginBtn.disabled = false;
+    });
+
+    function showApp() {
+      loginScreen.style.display = 'none';
+      mainApp.style.display = 'block';
+    }
+
+    // ---------------------------------------------------------
+    // RECORDING & PROCESSING LOGIC
+    // ---------------------------------------------------------
     const WORKER_URL = 'https://raimble-api.soundlifeaudio.workers.dev/';
     
     let mediaRecorder;
@@ -84,23 +188,16 @@
     let mimeType = '';
     let timerInterval;
     let secondsElapsed = 0;
-
     let wakeLock = null;
 
     async function requestWakeLock() {
       try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-        }
-      } catch (err) {
-        console.log('Wake Lock error:', err.message);
-      }
+        if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); }
+      } catch (err) { console.log('Wake Lock error:', err.message); }
     }
 
     function releaseWakeLock() {
-      if (wakeLock !== null) {
-        wakeLock.release().then(() => { wakeLock = null; });
-      }
+      if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); }
     }
 
     const recordBtn = document.getElementById('recordBtn');
@@ -108,7 +205,6 @@
     const processBtn = document.getElementById('processBtn');
     const statusText = document.getElementById('status');
     const timerDisplay = document.getElementById('timer');
-    
     const windowsContainer = document.getElementById('windowsContainer');
     const transcriptContent = document.getElementById('transcriptContent');
     const reportContent = document.getElementById('reportContent');
@@ -137,6 +233,9 @@
           processBtn.disabled = false;
         };
 
+        // Capture Start Time
+        sessionStartTimeDate = new Date();
+
         mediaRecorder.start(1000); 
         secondsElapsed = 0;
         timerInterval = setInterval(() => {
@@ -163,8 +262,10 @@
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
       }
       
-      releaseWakeLock();
+      // Capture Stop Time
+      sessionStopTimeDate = new Date();
 
+      releaseWakeLock();
       recordBtn.disabled = false;
       stopBtn.disabled = true;
     });
@@ -178,10 +279,10 @@
       transcriptContent.innerText = "Processing audio... (This usually takes 10-30 seconds)";
       reportContent.innerText = "Analyzing transcript for clinical notes...";
 
-      const now = new Date();
-      const currentDate = now.toLocaleDateString('en-AU');
-      const currentTime = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const therapistName = "Silvana Nossiter";
+      // Format Dates and Times
+      const currentDate = sessionStartTimeDate ? sessionStartTimeDate.toLocaleDateString('en-AU') : new Date().toLocaleDateString('en-AU');
+      const startTimeStr = sessionStartTimeDate ? sessionStartTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
+      const stopTimeStr = sessionStopTimeDate ? sessionStopTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
 
       const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
 
@@ -189,7 +290,7 @@ Instructions:
 1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript. You MUST separate the dialogue by speaker. Every time a different person speaks, start a new line and label them clearly (e.g., **Speaker 1:** [dialogue], **Speaker 2:** [dialogue]).
 2. Clinical Report: Based on the transcript, generate a comprehensive clinical session report following the exact structure and headings provided below. 
 
-Use objective, professional, and clinical language. If a specific section's information is not mentioned in the audio (such as "Scales" or "HNC Late Cancellations"), leave it blank or write "N/A". 
+Use objective, professional, and clinical language. If a specific section's information is not mentioned in the audio (such as "Scales"), leave it blank or write "N/A". 
 
 You MUST format your exact response like this, using the three pipes (|||) as a separator:
 
@@ -204,8 +305,11 @@ Interventions:
 Scales:
 [List any scales used, or N/A]
 
-Session [X]/[Y]  [CLIENT_ID]  ${currentDate}_${currentTime}
-Patient had their session with ${therapistName}.
+Session Date: ${currentDate}
+Start Time: ${startTimeStr}
+Stop Time: ${stopTimeStr}
+
+Patient had their session with ${currentTherapistName}.
 
 Summary of Client’s Narrative
 [Bullet points detailing the client's spoken history, current context, and stated goals]
@@ -253,7 +357,7 @@ Issues for Therapy Supervision
       const payload = {
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{
-          role: "user", // <-- ENTERPRISE FIX: Explicitly assigning the role
+          role: "user",
           parts: [
             { inlineData: { mimeType: mimeType, data: audioBase64 } },
             { text: "Process this session audio." }
@@ -276,7 +380,6 @@ Issues for Therapy Supervision
         }
         
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        
         let sections = rawText.split('|||');
         
         if (sections.length < 2) {
@@ -315,12 +418,9 @@ Issues for Therapy Supervision
     async function shareContent(elementId, title) {
       const text = document.getElementById(elementId).innerText;
       if (navigator.share) {
-        try {
-          await navigator.share({ title: title, text: text });
-        } catch (err) { console.log('Share canceled', err); }
-      } else {
-        alert("Web Share not supported on this browser.");
-      }
+        try { await navigator.share({ title: title, text: text }); } 
+        catch (err) { console.log('Share canceled', err); }
+      } else { alert("Web Share not supported on this browser."); }
     }
 
     async function copyContent(elementId, btnElement) {
