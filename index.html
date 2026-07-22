@@ -40,7 +40,7 @@
 <body>
 
   <h1>Create Therapy Notes</h1>
-  <p class="subtitle">Secure session transcription & SOAP report</p>
+  <p class="subtitle">Secure session transcription & clinical report</p>
 
   <div class="controls">
     <button id="recordBtn">Record</button>
@@ -85,6 +85,25 @@
     let timerInterval;
     let secondsElapsed = 0;
 
+    // --- Screen Wake Lock Setup ---
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        console.log('Wake Lock error:', err.message);
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLock !== null) {
+        wakeLock.release().then(() => { wakeLock = null; });
+      }
+    }
+
     const recordBtn = document.getElementById('recordBtn');
     const stopBtn = document.getElementById('stopBtn');
     const processBtn = document.getElementById('processBtn');
@@ -126,7 +145,10 @@
           timerDisplay.innerText = formatTime(secondsElapsed);
         }, 1000);
 
-        statusText.innerText = "Recording session...";
+        // Engage the Wake Lock when recording starts
+        await requestWakeLock();
+
+        statusText.innerText = "Recording session (Screen locked ON)...";
         recordBtn.disabled = true;
         stopBtn.disabled = false;
         processBtn.disabled = true;
@@ -142,6 +164,10 @@
         mediaRecorder.stop();
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
       }
+      
+      // Release the Wake Lock when recording stops
+      releaseWakeLock();
+
       recordBtn.disabled = false;
       stopBtn.disabled = true;
     });
@@ -166,7 +192,7 @@
       const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
 
 Instructions:
-1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript. In the transcript, clearly delineate speaker 1 and speaker 2, starting a new line every time the speaker changes.
+1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript.
 2. Clinical Report: Based on the transcript, generate a comprehensive clinical session report following the exact structure and headings provided below. 
 
 Use objective, professional, and clinical language. If a specific section's information is not mentioned in the audio (such as "Scales" or "HNC Late Cancellations"), leave it blank or write "N/A". 
@@ -184,7 +210,10 @@ Interventions:
 Scales:
 [List any scales used, or N/A]
 
-${currentDate}_${currentTime}
+HNC Late Cancellations:
+[Note any cancellations, or N/A]
+
+Session [X]/[Y]  [CLIENT_ID]  ${currentDate}_${currentTime}
 Patient had their session with ${therapistName}.
 
 Summary of Client’s Narrative
