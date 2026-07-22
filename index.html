@@ -145,7 +145,6 @@
           timerDisplay.innerText = formatTime(secondsElapsed);
         }, 1000);
 
-        // Engage the Wake Lock when recording starts
         await requestWakeLock();
 
         statusText.innerText = "Recording session (Screen locked ON)...";
@@ -165,7 +164,6 @@
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
       }
       
-      // Release the Wake Lock when recording stops
       releaseWakeLock();
 
       recordBtn.disabled = false;
@@ -178,15 +176,12 @@
       statusText.innerText = "Transcribing and generating report...";
       processBtn.disabled = true;
       windowsContainer.classList.add('active');
-      transcriptContent.innerText = "Processing audio...";
+      transcriptContent.innerText = "Processing audio... (This usually takes 10-30 seconds)";
       reportContent.innerText = "Analyzing transcript for clinical notes...";
 
-      // Generate the timestamp at the exact moment the button is clicked
       const now = new Date();
       const currentDate = now.toLocaleDateString('en-AU');
       const currentTime = now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false });
-      
-      // Temporary MVP Hardcode
       const therapistName = "Silvana Nossiter";
 
       const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
@@ -278,12 +273,24 @@ Issues for Therapy Supervision
         const data = await response.json();
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || data.text || "";
         
-        const sections = rawText.split('|||');
+        // 1. Attempt to split at the primary delimiter
+        let sections = rawText.split('|||');
+        
+        // 2. Fallback: If the delimiter is missing, intelligently split precisely where the clinical report begins
+        if (sections.length < 2) {
+          // This positive lookahead Regex finds the new line where "Goals:" starts, and splits the string directly before it
+          const fallbackSplit = rawText.split(/(?:\n|^)(?=\*\*Goals:\*\*|Goals:)/i);
+          if (fallbackSplit.length >= 2) {
+            // Keep the first half as the transcript, and join everything else as the report
+            sections = [fallbackSplit[0], fallbackSplit.slice(1).join('\n')];
+          }
+        }
         
         if (sections.length >= 2) {
           transcriptContent.innerHTML = sections[0].trim().replace(/\n/g, '<br>');
           reportContent.innerHTML = sections[1].trim().replace(/\n/g, '<br>');
         } else {
+          // If all parsing fails (e.g. the AI completely ignored the instructions and only transcribed)
           transcriptContent.innerHTML = "Delimiter missing. Full output below:<br><br>" + rawText.replace(/\n/g, '<br>');
           reportContent.innerHTML = "See Transcript window.";
         }
