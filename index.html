@@ -85,7 +85,6 @@
     let timerInterval;
     let secondsElapsed = 0;
 
-    // --- Screen Wake Lock Setup ---
     let wakeLock = null;
 
     async function requestWakeLock() {
@@ -268,20 +267,22 @@ Issues for Therapy Supervision
           body: JSON.stringify(payload)
         });
 
-        if (!response.ok) throw new Error('API Request Failed');
-        
         const data = await response.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || data.text || "";
         
-        // 1. Attempt to split at the primary delimiter
+        // --- UPGRADED ERROR CATCHING ---
+        // If Google Cloud returns an error object, force the app to stop and display it
+        if (!response.ok || data.error) {
+          const errorMessage = data.error?.message || `HTTP Error ${response.status}`;
+          throw new Error(`Google Cloud API Error: ${errorMessage}`);
+        }
+        
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        
         let sections = rawText.split('|||');
         
-        // 2. Fallback: If the delimiter is missing, intelligently split precisely where the clinical report begins
         if (sections.length < 2) {
-          // This positive lookahead Regex finds the new line where "Goals:" starts, and splits the string directly before it
           const fallbackSplit = rawText.split(/(?:\n|^)(?=\*\*Goals:\*\*|Goals:)/i);
           if (fallbackSplit.length >= 2) {
-            // Keep the first half as the transcript, and join everything else as the report
             sections = [fallbackSplit[0], fallbackSplit.slice(1).join('\n')];
           }
         }
@@ -290,15 +291,14 @@ Issues for Therapy Supervision
           transcriptContent.innerHTML = sections[0].trim().replace(/\n/g, '<br>');
           reportContent.innerHTML = sections[1].trim().replace(/\n/g, '<br>');
         } else {
-          // If all parsing fails (e.g. the AI completely ignored the instructions and only transcribed)
           transcriptContent.innerHTML = "Delimiter missing. Full output below:<br><br>" + rawText.replace(/\n/g, '<br>');
           reportContent.innerHTML = "See Transcript window.";
         }
         
         statusText.innerText = "Success.";
       } catch (err) {
-        transcriptContent.innerText = "Error: " + err.message;
-        reportContent.innerText = "Failed.";
+        transcriptContent.innerHTML = `<strong style="color: red;">${err.message}</strong>`;
+        reportContent.innerText = "Processing failed. See error in Transcript window.";
         statusText.innerText = "Processing failed.";
       }
       processBtn.disabled = false;
