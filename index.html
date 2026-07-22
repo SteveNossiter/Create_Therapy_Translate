@@ -17,6 +17,12 @@
     
     #loginScreen { max-width: 400px; margin: 60px auto; text-align: center; }
     .input-field { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+    
+    /* Password Wrapper Styles */
+    .password-wrapper { position: relative; width: 100%; margin-bottom: 15px; }
+    .password-wrapper .input-field { margin-bottom: 0; padding-right: 60px; }
+    .toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; }
+    
     #loginError { color: var(--danger); font-size: 14px; margin-top: 10px; display: none; }
     
     #mainApp { display: none; }
@@ -57,7 +63,12 @@
     <h2>Clinic Login</h2>
     <p class="subtitle" style="margin-bottom: 25px;">Secure Session Access</p>
     <input type="email" id="emailInput" class="input-field" placeholder="Email Address">
-    <input type="password" id="passwordInput" class="input-field" placeholder="Password">
+    
+    <div class="password-wrapper">
+      <input type="password" id="passwordInput" class="input-field" placeholder="Password">
+      <button type="button" id="togglePasswordBtn" class="toggle-password">Show</button>
+    </div>
+    
     <button id="loginBtn">Log In</button>
     <div id="loginError"></div>
   </div>
@@ -129,36 +140,62 @@
     const logoutBtn = document.getElementById('logoutBtn');
     const emailInput = document.getElementById('emailInput');
     const passwordInput = document.getElementById('passwordInput');
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
     const loginError = document.getElementById('loginError');
 
+    // Handle session checking on page load
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Retrieve display name from Supabase User Metadata, fallback to email if missing
         currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
         showApp();
       }
     }
     checkSession();
 
+    // Toggle Password Visibility
+    togglePasswordBtn.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      togglePasswordBtn.innerText = type === 'password' ? 'Show' : 'Hide';
+    });
+
+    // Handle Enter Key Submission
+    function handleEnterKey(e) {
+      if (e.key === 'Enter') {
+        loginBtn.click();
+      }
+    }
+    emailInput.addEventListener('keyup', handleEnterKey);
+    passwordInput.addEventListener('keyup', handleEnterKey);
+
+    // Robust Login Execution
     loginBtn.addEventListener('click', async () => {
       loginBtn.innerText = "Authenticating...";
       loginBtn.disabled = true;
       loginError.style.display = 'none';
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailInput.value,
-        password: passwordInput.value
-      });
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailInput.value.trim(),
+          password: passwordInput.value
+        });
 
-      if (error) {
-        loginError.innerText = error.message;
+        if (error) {
+          throw error;
+        }
+
+        if (data.session) {
+          currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email;
+          showApp();
+        } else {
+          throw new Error("Login failed. Ensure the email address is verified in Supabase.");
+        }
+      } catch (err) {
+        loginError.innerText = err.message;
         loginError.style.display = 'block';
         loginBtn.innerText = "Log In";
         loginBtn.disabled = false;
-      } else if (data.session) {
-        currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email;
-        showApp();
       }
     });
 
@@ -168,6 +205,8 @@
       loginScreen.style.display = 'block';
       emailInput.value = '';
       passwordInput.value = '';
+      passwordInput.setAttribute('type', 'password');
+      togglePasswordBtn.innerText = 'Show';
       loginBtn.innerText = "Log In";
       loginBtn.disabled = false;
     });
@@ -233,7 +272,6 @@
           processBtn.disabled = false;
         };
 
-        // Capture Start Time
         sessionStartTimeDate = new Date();
 
         mediaRecorder.start(1000); 
@@ -262,7 +300,6 @@
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
       }
       
-      // Capture Stop Time
       sessionStopTimeDate = new Date();
 
       releaseWakeLock();
@@ -279,7 +316,6 @@
       transcriptContent.innerText = "Processing audio... (This usually takes 10-30 seconds)";
       reportContent.innerText = "Analyzing transcript for clinical notes...";
 
-      // Format Dates and Times
       const currentDate = sessionStartTimeDate ? sessionStartTimeDate.toLocaleDateString('en-AU') : new Date().toLocaleDateString('en-AU');
       const startTimeStr = sessionStartTimeDate ? sessionStartTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
       const stopTimeStr = sessionStopTimeDate ? sessionStopTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
