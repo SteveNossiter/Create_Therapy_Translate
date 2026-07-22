@@ -253,6 +253,7 @@ Issues for Therapy Supervision
       const payload = {
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{
+          role: "user", // <-- ENTERPRISE FIX: Explicitly assigning the role
           parts: [
             { inlineData: { mimeType: mimeType, data: audioBase64 } },
             { text: "Process this session audio." }
@@ -269,8 +270,6 @@ Issues for Therapy Supervision
 
         const data = await response.json();
         
-        // --- UPGRADED ERROR CATCHING ---
-        // If Google Cloud returns an error object, force the app to stop and display it
         if (!response.ok || data.error) {
           const errorMessage = data.error?.message || `HTTP Error ${response.status}`;
           throw new Error(`Google Cloud API Error: ${errorMessage}`);
