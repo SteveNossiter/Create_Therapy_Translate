@@ -192,14 +192,14 @@
       const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
 
 Instructions:
-1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript.
+1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript. You MUST separate the dialogue by speaker. Every time a different person speaks, start a new line and label them clearly (e.g., **Speaker 1:** [dialogue], **Speaker 2:** [dialogue]).
 2. Clinical Report: Based on the transcript, generate a comprehensive clinical session report following the exact structure and headings provided below. 
 
 Use objective, professional, and clinical language. If a specific section's information is not mentioned in the audio (such as "Scales" or "HNC Late Cancellations"), leave it blank or write "N/A". 
 
 You MUST format your exact response like this, using the three pipes (|||) as a separator:
 
-[Insert full translated English transcript here]
+[Insert full translated English transcript here, with speakers delineated on new lines]
 |||
 Goals:
 [List assessment methods used, presenting issues, (+) goals, and (-) reduction targets]
@@ -284,11 +284,11 @@ Issues for Therapy Supervision
         const sections = rawText.split('|||');
         
         if (sections.length >= 2) {
-          transcriptContent.innerText = sections[0].trim();
-          reportContent.innerText = sections[1].trim();
+          transcriptContent.innerHTML = sections[0].trim().replace(/\n/g, '<br>');
+          reportContent.innerHTML = sections[1].trim().replace(/\n/g, '<br>');
         } else {
-          transcriptContent.innerText = "Delimiter missing. Full output below:\n\n" + rawText;
-          reportContent.innerText = "See Transcript window.";
+          transcriptContent.innerHTML = "Delimiter missing. Full output below:<br><br>" + rawText.replace(/\n/g, '<br>');
+          reportContent.innerHTML = "See Transcript window.";
         }
         
         statusText.innerText = "Success.";
