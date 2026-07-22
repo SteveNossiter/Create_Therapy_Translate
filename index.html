@@ -120,7 +120,8 @@
     const SUPABASE_URL = 'https://awtyxmetipldytjmzayb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
     
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    // CHANGED: Renamed the variable to supabaseClient to prevent crashing!
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage }
     });
 
@@ -145,7 +146,7 @@
 
     // Handle session checking on page load
     async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
         currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
         showApp();
@@ -176,7 +177,7 @@
       loginError.style.display = 'none';
 
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
           email: emailInput.value.trim(),
           password: passwordInput.value
         });
@@ -200,7 +201,7 @@
     });
 
     logoutBtn.addEventListener('click', async () => {
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       mainApp.style.display = 'none';
       loginScreen.style.display = 'block';
       emailInput.value = '';
