@@ -6,60 +6,204 @@
   <title>Create Therapy Session Notes</title>
   <link rel="icon" href="data:,">
   
-  <!-- Load the Supabase Library -->
+  <!-- Load the Supabase Library & League Spartan Font -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <style>
-    :root { --primary: #007aff; --danger: #ff3b30; --success: #34c759; --bg: #f2f2f7; --text: #1c1c1e; --card-bg: #ffffff; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; color: var(--text); background: var(--bg); line-height: 1.5; }
-    h1 { font-size: 24px; margin-bottom: 5px; }
-    p.subtitle { color: #8e8e93; margin-top: 0; margin-bottom: 20px; }
+    :root { 
+      --primary: #007aff; 
+      --primary-dark: #005bb5;
+      --danger: #ff3b30; 
+      --danger-dark: #b32a22;
+      --warning: #ff9500;
+      --warning-dark: #b36800;
+      --success: #34c759; 
+      --success-dark: #248a3d;
+      --text: #0a2e3f; /* Deep teal drawn from the painting */
+      --card-bg: #ffffff; 
+    }
     
-    #loginScreen { max-width: 400px; margin: 60px auto; text-align: center; }
-    .input-field { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+    body { 
+      font-family: 'League Spartan', sans-serif; 
+      max-width: 900px; 
+      margin: 0 auto; 
+      padding: 30px 20px; 
+      color: var(--text); 
+      line-height: 1.5;
+      background-image: url('IMG_4213.JPG.png');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
     
-    /* Password Wrapper Styles */
-    .password-wrapper { position: relative; width: 100%; margin-bottom: 15px; }
+    h1 { font-size: 32px; font-weight: 600; margin-bottom: 5px; margin-top: 0; }
+    p.subtitle { color: #3a5a6b; font-weight: 400; margin-top: 0; margin-bottom: 25px; font-size: 18px; }
+    
+    /* Glassmorphic Panel */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 24px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+      position: relative;
+    }
+
+    /* 3D Tactile Buttons */
+    .controls { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+    
+    button { 
+      font-family: 'League Spartan', sans-serif;
+      padding: 12px 24px; 
+      font-size: 18px; 
+      font-weight: 500; 
+      border: none; 
+      border-radius: 50px; /* Pill shape */
+      cursor: pointer; 
+      color: white; 
+      transition: all 0.1s ease;
+      transform: translateY(-4px);
+    }
+    
+    button:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+      transform: translateY(0);
+      box-shadow: none !important;
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    #recordBtn { 
+      background-color: var(--danger); 
+      box-shadow: 0 6px 0px var(--danger-dark), 0 10px 15px rgba(0,0,0,0.1); 
+    }
+    #recordBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--danger-dark), 0 4px 8px rgba(0,0,0,0.1); }
+    
+    #stopBtn { 
+      background-color: var(--warning); 
+      box-shadow: 0 6px 0px var(--warning-dark), 0 10px 15px rgba(0,0,0,0.1); 
+    }
+    #stopBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--warning-dark), 0 4px 8px rgba(0,0,0,0.1); }
+    
+    #processBtn { 
+      background-color: var(--primary); 
+      box-shadow: 0 6px 0px var(--primary-dark), 0 10px 15px rgba(0,0,0,0.1); 
+    }
+    #processBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1); }
+    
+    #loginBtn { 
+      background-color: var(--primary); 
+      width: 100%; 
+      box-shadow: 0 6px 0px var(--primary-dark), 0 10px 15px rgba(0,0,0,0.1);
+    }
+    #loginBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1); }
+
+    /* Pulsing Glow Animation for Recording */
+    .recording-pulse {
+      animation: pulseGlow 1.5s infinite alternate;
+    }
+    
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 6px 0px var(--danger-dark), 0 10px 15px rgba(0,0,0,0.1), 0 0 10px rgba(255, 59, 48, 0.3); }
+      100% { box-shadow: 0 6px 0px var(--danger-dark), 0 10px 15px rgba(0,0,0,0.1), 0 0 35px rgba(255, 59, 48, 0.9); }
+    }
+
+    /* Status Panel */
+    .status-panel { 
+      background: rgba(255, 255, 255, 0.5); 
+      padding: 15px 20px; 
+      border-radius: 16px; 
+      font-size: 16px; 
+      display: flex; 
+      justify-content: space-between; 
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    .status-text { font-weight: 500; }
+    .timer { font-family: monospace; font-size: 18px; font-weight: 600; color: var(--danger); }
+    
+    /* Login & Setup Styles */
+    #loginScreen { max-width: 400px; margin: 80px auto; text-align: center; }
+    .input-field { 
+      font-family: 'League Spartan', sans-serif;
+      width: 100%; 
+      padding: 14px; 
+      margin-bottom: 15px; 
+      border: 2px solid rgba(10, 46, 63, 0.1); 
+      border-radius: 12px; 
+      box-sizing: border-box; 
+      font-size: 16px; 
+      background: rgba(255,255,255,0.9);
+    }
+    .password-wrapper { position: relative; width: 100%; margin-bottom: 20px; }
     .password-wrapper .input-field { margin-bottom: 0; padding-right: 60px; }
-    .toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; }
+    .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; box-shadow: none; }
+    .toggle-password:active:not(:disabled) { box-shadow: none; transform: translateY(-50%); }
     
-    #loginError { color: var(--danger); font-size: 14px; margin-top: 10px; display: none; }
+    #loginError { color: var(--danger); font-size: 15px; margin-top: 15px; display: none; font-weight: 500; }
+    #logoutBtn { background-color: transparent; color: var(--text); padding: 8px 12px; font-size: 14px; position: absolute; top: 20px; right: 20px; box-shadow: none; border: 1px solid rgba(10, 46, 63, 0.2); transform: none; }
+    #logoutBtn:hover { background: rgba(10, 46, 63, 0.05); }
     
     #mainApp { display: none; }
 
-    .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    button { padding: 12px 20px; font-size: 16px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    #loginBtn { background-color: var(--primary); width: 100%; }
-    #logoutBtn { background-color: #8e8e93; padding: 8px 12px; font-size: 14px; position: absolute; top: 20px; right: 20px; }
-    
-    #recordBtn { background-color: var(--danger); }
-    #stopBtn { background-color: #ff9500; }
-    #processBtn { background-color: var(--primary); }
-    
-    .status-panel { background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; display: flex; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .status-text { font-weight: 500; }
-    .timer { font-family: monospace; font-size: 16px; }
-    
-    .windows-container { display: flex; flex-direction: column; gap: 20px; display: none; }
+    /* Results Windows (Solid White) */
+    .windows-container { display: flex; flex-direction: column; gap: 25px; display: none; }
     .windows-container.active { display: flex; }
-    
     @media (min-width: 768px) { .windows-container.active { flex-direction: row; align-items: stretch; } }
     
-    .window-card { background: var(--card-bg); border-radius: 12px; padding: 20px; flex: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-width: 0; }
-    .window-card h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #e5e5ea; padding-bottom: 10px; }
+    .window-card { 
+      background: var(--card-bg); 
+      border-radius: 20px; 
+      padding: 25px; 
+      flex: 1; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+      display: flex; 
+      flex-direction: column; 
+      min-width: 0; 
+    }
+    .window-card h2 { margin-top: 0; font-size: 22px; font-weight: 600; border-bottom: 2px solid #f2f2f7; padding-bottom: 12px; margin-bottom: 15px; }
     
-    .export-controls { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-    .export-btn { background-color: var(--success); padding: 8px 12px; font-size: 13px; border-radius: 6px; }
+    .export-controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    .export-btn { 
+      background-color: var(--success); 
+      padding: 8px 16px; 
+      font-size: 14px; 
+      border-radius: 50px; 
+      box-shadow: 0 4px 0px var(--success-dark), 0 4px 6px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .export-btn:active:not(:disabled) {
+      box-shadow: 0 1px 0px var(--success-dark), 0 2px 3px rgba(0,0,0,0.1);
+      transform: translateY(0);
+    }
     
-    .content-box { white-space: pre-wrap; font-size: 14px; color: #3a3a3c; flex-grow: 1; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e5e5ea; overflow-y: auto; max-height: 600px; }
+    .content-box { 
+      white-space: pre-wrap; 
+      font-size: 15px; 
+      color: #3a3a3c; 
+      flex-grow: 1; 
+      background: #fafafa; 
+      padding: 20px; 
+      border-radius: 12px; 
+      border: 1px solid #e5e5ea; 
+      overflow-y: auto; 
+      max-height: 600px; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Keep transcript readable in standard system font */
+    }
   </style>
 </head>
 <body>
 
   <!-- LOGIN SCREEN -->
-  <div id="loginScreen" class="window-card">
+  <div id="loginScreen" class="glass-panel">
     <h2>Clinic Login</h2>
     <p class="subtitle" style="margin-bottom: 25px;">Secure Session Access</p>
     <input type="email" id="emailInput" class="input-field" placeholder="Email Address">
@@ -75,21 +219,25 @@
 
   <!-- MAIN APPLICATION -->
   <div id="mainApp">
-    <button id="logoutBtn">Log Out</button>
-    <h1>Create Therapy Notes</h1>
-    <p class="subtitle">Secure session transcription & clinical report</p>
+    
+    <div class="glass-panel">
+      <button id="logoutBtn">Log Out</button>
+      <h1>Create Therapy Notes</h1>
+      <p class="subtitle">Secure session transcription & clinical report</p>
 
-    <div class="controls">
-      <button id="recordBtn">Record</button>
-      <button id="stopBtn" disabled>Stop</button>
-      <button id="processBtn" disabled>Generate</button>
+      <div class="controls">
+        <button id="recordBtn">Record</button>
+        <button id="stopBtn" disabled>Stop</button>
+        <button id="processBtn" disabled>Generate</button>
+      </div>
+
+      <div class="status-panel">
+        <span class="status-text" id="status">Ready to record.</span>
+        <span class="timer" id="timer">00:00:00</span>
+      </div>
     </div>
 
-    <div class="status-panel">
-      <span class="status-text" id="status">Ready to record.</span>
-      <span class="timer" id="timer">00:00:00</span>
-    </div>
-
+    <!-- OPAQUE RESULTS WINDOWS -->
     <div class="windows-container" id="windowsContainer">
       <div class="window-card">
         <h2>Transcript</h2>
@@ -120,7 +268,6 @@
     const SUPABASE_URL = 'https://awtyxmetipldytjmzayb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
     
-    // CHANGED: Renamed the variable to supabaseClient to prevent crashing!
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage }
     });
@@ -144,7 +291,6 @@
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
     const loginError = document.getElementById('loginError');
 
-    // Handle session checking on page load
     async function checkSession() {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
@@ -154,14 +300,12 @@
     }
     checkSession();
 
-    // Toggle Password Visibility
     togglePasswordBtn.addEventListener('click', () => {
       const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
       passwordInput.setAttribute('type', type);
       togglePasswordBtn.innerText = type === 'password' ? 'Show' : 'Hide';
     });
 
-    // Handle Enter Key Submission
     function handleEnterKey(e) {
       if (e.key === 'Enter') {
         loginBtn.click();
@@ -170,7 +314,6 @@
     emailInput.addEventListener('keyup', handleEnterKey);
     passwordInput.addEventListener('keyup', handleEnterKey);
 
-    // Robust Login Execution
     loginBtn.addEventListener('click', async () => {
       loginBtn.innerText = "Authenticating...";
       loginBtn.disabled = true;
@@ -182,9 +325,7 @@
           password: passwordInput.value
         });
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         if (data.session) {
           currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email;
@@ -286,6 +427,7 @@
 
         statusText.innerText = "Recording session (Screen locked ON)...";
         recordBtn.disabled = true;
+        recordBtn.classList.add('recording-pulse'); // Add glowing animation
         stopBtn.disabled = false;
         processBtn.disabled = true;
         windowsContainer.classList.remove('active');
@@ -305,6 +447,7 @@
 
       releaseWakeLock();
       recordBtn.disabled = false;
+      recordBtn.classList.remove('recording-pulse'); // Remove glowing animation
       stopBtn.disabled = true;
     });
 
