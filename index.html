@@ -63,6 +63,8 @@
       right: 20px;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .nav-btn {
@@ -78,6 +80,8 @@
       transition: all 0.2s ease;
     }
     .nav-btn:hover { background: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
+    #resetBtn { background: rgba(255, 59, 48, 0.1); color: var(--danger-dark); border-color: rgba(255, 59, 48, 0.3); }
+    #resetBtn:hover { background: rgba(255, 59, 48, 0.2); }
 
     /* Metadata Inputs */
     .metadata-grid {
@@ -208,6 +212,7 @@
   <div id="mainApp">
     <div class="glass-panel">
       <div class="top-nav">
+        <button id="resetBtn" class="nav-btn">Clear Session</button>
         <button id="archiveBtn" class="nav-btn">Archive</button>
         <button id="infoBtn" class="nav-btn">Info & Compliance</button>
         <button id="logoutBtn" class="nav-btn">Log Out</button>
@@ -317,13 +322,15 @@
     const SUPABASE_URL = 'https://awtyxmetipldytjmzayb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
     
+    // Configured to utilize sessionStorage. 
+    // This allows the Vault Key to persist through page refreshes, but destroys it the second the browser tab closes.
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage }
     });
 
     let currentUserId = null;
-    let currentTherapistName = "Therapist"; // Default fallback
-    let currentUserPassword = ""; // Stored ephemerally to act as the encryption vault key
+    let currentTherapistName = "Therapist";
+    let currentUserPassword = ""; 
 
     // ---------------------------------------------------------
     // WEB CRYPTO API: AES-GCM ENCRYPTION LOGIC
@@ -374,7 +381,7 @@
     }
 
     // ---------------------------------------------------------
-    // UI LOGIC & AUTHENTICATION
+    // UI LOGIC, AUTHENTICATION & SESSION PERSISTENCE
     // ---------------------------------------------------------
     const loginScreen = document.getElementById('loginScreen');
     const mainApp = document.getElementById('mainApp');
@@ -390,15 +397,53 @@
       togglePasswordBtn.innerText = type === 'password' ? 'Show' : 'Hide';
     });
 
+    async function performLogout() {
+      await supabaseClient.auth.signOut();
+      sessionStorage.removeItem('vaultKey');
+      sessionStorage.removeItem('loginTimestamp');
+      currentUserPassword = "";
+      window.location.reload();
+    }
+
+    function startSessionTimer(loginTime) {
+      // Check every minute if the session has exceeded 12 hours (43,200,000 milliseconds)
+      setInterval(() => {
+        if ((Date.now() - parseInt(loginTime)) > 43200000) {
+          performLogout();
+        }
+      }, 60000); 
+    }
+
     async function checkSession() {
       const { data: { session } } = await supabaseClient.auth.getSession();
+      
       if (session) {
+        const loginTime = sessionStorage.getItem('loginTimestamp');
+        const vaultKey = sessionStorage.getItem('vaultKey');
+
+        // 12-hour expiration check
+        if (loginTime && (Date.now() - parseInt(loginTime)) > 43200000) {
+            await performLogout();
+            return;
+        }
+
+        // If the browser tab was closed, the vaultKey drops. Force re-login.
+        if (!vaultKey) {
+            await performLogout();
+            return;
+        }
+
         currentUserId = session.user.id;
         currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
-        // If they refreshed, we lose the password from memory. Must prompt them to re-login for vault access.
-        await supabaseClient.auth.signOut(); 
+        currentUserPassword = vaultKey;
+        
+        loginScreen.style.display = 'none';
+        mainApp.style.display = 'block';
+        
+        startSessionTimer(loginTime);
       }
     }
+    
     checkSession();
 
     loginBtn.addEventListener('click', async () => {
@@ -414,12 +459,18 @@
         if (error) throw error;
         
         if (data.session) {
+          // Cache the vault key and login time securely in the active tab's session storage
+          sessionStorage.setItem('vaultKey', passwordInput.value);
+          sessionStorage.setItem('loginTimestamp', Date.now().toString());
+
           currentUserId = data.session.user.id;
           currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email;
-          currentUserPassword = passwordInput.value; // Store temporarily for encryption operations
+          currentUserPassword = passwordInput.value; 
           
           loginScreen.style.display = 'none';
           mainApp.style.display = 'block';
+
+          startSessionTimer(Date.now());
         }
       } catch (err) {
         loginError.innerText = err.message;
@@ -429,10 +480,36 @@
       }
     });
 
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await supabaseClient.auth.signOut();
-      currentUserPassword = ""; // Clear key from memory
-      window.location.reload();
+    document.getElementById('logoutBtn').addEventListener('click', performLogout);
+
+    // Workspace Reset / Clear Session Logic
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (!confirm("Clear current session data? Make sure you have exported your notes first.")) return;
+      
+      document.getElementById('windowsContainer').classList.remove('active');
+      document.getElementById('transcriptContent').innerHTML = "Awaiting data...";
+      document.getElementById('reportContent').innerHTML = "Awaiting data...";
+      
+      document.getElementById('clientRefInput').value = "";
+      document.getElementById('locationInput').value = "";
+      document.getElementById('attendeesInput').value = "";
+      
+      recordedAudioBlob = null;
+      audioChunks = [];
+      
+      document.getElementById('status').innerText = "Ready to record.";
+      document.getElementById('timer').innerText = "00:00:00";
+      document.getElementById('statusPanel').className = 'status-panel';
+      
+      document.getElementById('recordBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      document.getElementById('processBtn').disabled = true;
+      
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+      clearInterval(timerInterval);
     });
 
     // Transcript UI Toggle
@@ -576,7 +653,6 @@
       formData.append('startTimeStr', startTimeStr);
       formData.append('stopTimeStr', stopTimeStr);
       
-      // FIXED: Ensure the therapist name is sent accurately along with location/attendees metadata
       const combinedMetadataString = `${currentTherapistName} | Location: ${locationVal} | Attendees: ${attendeesVal}`;
       formData.append('currentTherapistName', combinedMetadataString); 
 
@@ -721,7 +797,6 @@
     async function copyContent(elementId, btnElement) {
       const contentBox = document.getElementById(elementId);
       
-      // Check if it's the specific consent box to copy raw text instead of HTML
       if (elementId === 'consentText') {
         try {
           await navigator.clipboard.writeText(contentBox.innerText);
@@ -732,7 +807,6 @@
         return;
       }
 
-      // Default rich text copy logic for transcripts and reports
       try {
         const clipboardItem = new ClipboardItem({
           "text/plain": new Blob([contentBox.innerText], { type: "text/plain" }),
