@@ -50,7 +50,7 @@
     }
     
     h2 { margin-top: 0; font-size: 22px; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.5); padding-bottom: 12px; margin-bottom: 15px; }
-    p.subtitle { color: #3a5a6b; font-weight: 400; margin-top: 0; margin-bottom: 25px; font-size: 18px; }
+    p.subtitle { color: #3a5a6b; font-weight: 400; margin-top: 0; margin-bottom: 20px; font-size: 18px; }
     
     /* Glassmorphic Panel */
     .glass-panel {
@@ -157,31 +157,33 @@
       transform: scale(1.05);
     }
 
-    /* Mode Toggle Switch */
+    /* Compact Mode Toggle Switch */
     .toggle-container {
-      position: absolute;
-      top: 115px; 
-      right: 20px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: center;
+      gap: 10px;
       background: rgba(255, 255, 255, 0.5);
-      padding: 6px 12px;
+      padding: 6px 14px;
       border-radius: 20px;
       border: 1px solid rgba(10, 46, 63, 0.2);
+      width: fit-content;
+      margin: 0 auto 20px auto; /* Centers the toggle and adds space below */
     }
     
     .toggle-label {
-      font-size: 14px;
+      font-size: 13px; /* Slightly smaller text */
       font-weight: 600;
       color: var(--text);
+      text-transform: uppercase; /* Makes it look a bit cleaner */
+      letter-spacing: 0.5px;
     }
     
     .switch {
       position: relative;
       display: inline-block;
-      width: 44px;
-      height: 24px;
+      width: 40px; /* Scaled down width */
+      height: 22px; /* Scaled down height */
     }
     
     .switch input { 
@@ -202,8 +204,8 @@
     .slider:before {
       position: absolute;
       content: "";
-      height: 18px;
-      width: 18px;
+      height: 16px; /* Scaled down inner circle */
+      width: 16px;
       left: 3px;
       bottom: 3px;
       background-color: white;
@@ -217,7 +219,7 @@
     }
     
     input:checked + .slider:before {
-      transform: translateX(20px);
+      transform: translateX(18px); /* Adjusted translation for smaller width */
     }
 
     /* Status Panel & Inner Glows */
@@ -490,8 +492,11 @@
       <!-- Top Utility Buttons -->
       <button id="infoBtn" class="info-btn" title="Security & Instructions">i</button>
       <button id="logoutBtn">Log Out</button>
+
+      <h1>Create Therapy Session Notes</h1>
+      <p class="subtitle">Secure session transcription & clinical report</p>
       
-      <!-- Mode Toggle Switch -->
+      <!-- Compact Mode Toggle Switch Moved Here -->
       <div class="toggle-container">
         <span class="toggle-label">Therapy</span>
         <label class="switch">
@@ -500,9 +505,6 @@
         </label>
         <span class="toggle-label">Meeting</span>
       </div>
-
-      <h1>Create Therapy Session Notes</h1>
-      <p class="subtitle">Secure session transcription & clinical report</p>
 
       <div class="controls">
         <button id="recordBtn" class="stone-btn" aria-label="Record"></button>
@@ -534,7 +536,7 @@
         <div class="export-controls">
           <button class="export-btn" onclick="shareContent('reportContent', 'Session Report')">Share</button>
           <button class="export-btn" onclick="copyContent('reportContent', this)">Copy</button>
-          <button class="export-btn" onclick="downloadContent('reportContent', 'Report')">Download</button>
+          <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
         </div>
         <div id="reportContent" class="content-box" contenteditable="true">Awaiting data...</div>
       </div>
