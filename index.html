@@ -18,11 +18,9 @@
       --primary-dark: #005bb5;
       --danger: #ff3b30; 
       --danger-dark: #b32a22;
-      --warning: #ff9500;
-      --warning-dark: #b36800;
       --success: #34c759; 
       --success-dark: #248a3d;
-      --text: #0a2e3f; /* Deep teal drawn from the painting */
+      --text: #0a2e3f; 
       --card-bg: #ffffff; 
     }
     
@@ -55,69 +53,64 @@
       position: relative;
     }
 
-    /* 3D Tactile Buttons */
-    .controls { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+    /* 3D Stone Image Buttons */
+    .controls { display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; }
     
-    button { 
+    .stone-btn { 
+      width: 140px; 
+      height: 70px; /* Maintains the ~2:1 aspect ratio of your image files */
+      background-color: transparent;
+      background-size: contain;
+      background-position: center;
+      background-repeat: no-repeat;
+      border: none; 
+      cursor: pointer; 
+      transition: all 0.1s ease;
+      transform: translateY(-4px);
+      /* Uses drop-shadow to trace the exact shape of your PNGs */
+      filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4));
+      padding: 0;
+    }
+    
+    .stone-btn:disabled { 
+      opacity: 0.6; 
+      cursor: not-allowed; 
+      transform: translateY(0);
+      filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.2)) grayscale(40%);
+    }
+
+    .stone-btn:active:not(:disabled) {
+      transform: translateY(0);
+      filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.6));
+    }
+    
+    /* Assigning the specific images */
+    #recordBtn { background-image: url('record-stone-no-bg.png'); }
+    #stopBtn { background-image: url('stop-stone-no-bg.png'); }
+    #processBtn { background-image: url('generate-stone-no-bg.png'); }
+    
+    /* Standard UI Button for Login/Logout */
+    .ui-btn {
       font-family: 'League Spartan', sans-serif;
       padding: 12px 24px; 
       font-size: 18px; 
       font-weight: 500; 
       border: none; 
-      border-radius: 50px; /* Pill shape */
+      border-radius: 50px;
       cursor: pointer; 
       color: white; 
       transition: all 0.1s ease;
       transform: translateY(-4px);
-    }
-    
-    button:disabled { 
-      opacity: 0.5; 
-      cursor: not-allowed; 
-      transform: translateY(0);
-      box-shadow: none !important;
-    }
-
-    button:active:not(:disabled) {
-      transform: translateY(0);
-    }
-    
-    #recordBtn { 
-      background-color: var(--danger); 
-      box-shadow: 0 6px 0px var(--danger-dark), 0 10px 15px rgba(0,0,0,0.1); 
-    }
-    #recordBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--danger-dark), 0 4px 8px rgba(0,0,0,0.1); }
-    
-    #stopBtn { 
-      background-color: var(--warning); 
-      box-shadow: 0 6px 0px var(--warning-dark), 0 10px 15px rgba(0,0,0,0.1); 
-    }
-    #stopBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--warning-dark), 0 4px 8px rgba(0,0,0,0.1); }
-    
-    #processBtn { 
       background-color: var(--primary); 
-      box-shadow: 0 6px 0px var(--primary-dark), 0 10px 15px rgba(0,0,0,0.1); 
-    }
-    #processBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1); }
-    
-    #loginBtn { 
-      background-color: var(--primary); 
-      width: 100%; 
       box-shadow: 0 6px 0px var(--primary-dark), 0 10px 15px rgba(0,0,0,0.1);
     }
-    #loginBtn:active:not(:disabled) { box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1); }
-
-    /* Pulsing Glow Animation for Recording */
-    .recording-pulse {
-      animation: pulseGlow 1.5s infinite alternate;
+    .ui-btn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1);
     }
-    
-    @keyframes pulseGlow {
-      0% { box-shadow: 0 6px 0px var(--danger-dark), 0 10px 15px rgba(0,0,0,0.1), 0 0 10px rgba(255, 59, 48, 0.3); }
-      100% { box-shadow: 0 6px 0px var(--danger-dark), 0 10px 15px rgba(0,0,0,0.1), 0 0 35px rgba(255, 59, 48, 0.9); }
-    }
+    #loginBtn { width: 100%; }
 
-    /* Status Panel */
+    /* Status Panel & Inner Glows */
     .status-panel { 
       background: rgba(255, 255, 255, 0.5); 
       padding: 15px 20px; 
@@ -126,9 +119,35 @@
       display: flex; 
       justify-content: space-between; 
       border: 1px solid rgba(255, 255, 255, 0.4);
+      transition: box-shadow 0.4s ease; /* Smooth transition between glow states */
     }
+    
+    .status-panel.panel-recording {
+      animation: innerPulseRed 1.5s infinite alternate;
+    }
+    
+    .status-panel.panel-stopped {
+      box-shadow: inset 0 0 20px rgba(52, 199, 89, 0.4); /* Static subtle green glow */
+    }
+    
+    @keyframes innerPulseRed {
+      0% { box-shadow: inset 0 0 8px rgba(255, 59, 48, 0.2); }
+      100% { box-shadow: inset 0 0 25px rgba(255, 59, 48, 0.6); }
+    }
+
     .status-text { font-weight: 500; }
-    .timer { font-family: monospace; font-size: 18px; font-weight: 600; color: var(--danger); }
+    
+    /* Timer Logic */
+    .timer { 
+      font-family: monospace; 
+      font-size: 18px; 
+      font-weight: 600; 
+      color: var(--text); /* Defaults to black/dark teal */
+      transition: color 0.3s ease;
+    }
+    .timer.recording-active {
+      color: var(--danger); /* Snaps to red when recording */
+    }
     
     /* Login & Setup Styles */
     #loginScreen { max-width: 400px; margin: 80px auto; text-align: center; }
@@ -146,10 +165,9 @@
     .password-wrapper { position: relative; width: 100%; margin-bottom: 20px; }
     .password-wrapper .input-field { margin-bottom: 0; padding-right: 60px; }
     .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; box-shadow: none; }
-    .toggle-password:active:not(:disabled) { box-shadow: none; transform: translateY(-50%); }
     
     #loginError { color: var(--danger); font-size: 15px; margin-top: 15px; display: none; font-weight: 500; }
-    #logoutBtn { background-color: transparent; color: var(--text); padding: 8px 12px; font-size: 14px; position: absolute; top: 20px; right: 20px; box-shadow: none; border: 1px solid rgba(10, 46, 63, 0.2); transform: none; }
+    #logoutBtn { background-color: transparent; color: var(--text); padding: 8px 12px; font-size: 14px; position: absolute; top: 20px; right: 20px; box-shadow: none; border: 1px solid rgba(10, 46, 63, 0.2); transform: none; border-radius: 50px; cursor: pointer; }
     #logoutBtn:hover { background: rgba(10, 46, 63, 0.05); }
     
     #mainApp { display: none; }
@@ -173,12 +191,17 @@
     
     .export-controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
     .export-btn { 
+      font-family: 'League Spartan', sans-serif;
+      border: none;
+      color: white;
       background-color: var(--success); 
       padding: 8px 16px; 
       font-size: 14px; 
       border-radius: 50px; 
+      cursor: pointer;
       box-shadow: 0 4px 0px var(--success-dark), 0 4px 6px rgba(0,0,0,0.1);
       transform: translateY(-2px);
+      transition: all 0.1s ease;
     }
     .export-btn:active:not(:disabled) {
       box-shadow: 0 1px 0px var(--success-dark), 0 2px 3px rgba(0,0,0,0.1);
@@ -196,7 +219,7 @@
       border: 1px solid #e5e5ea; 
       overflow-y: auto; 
       max-height: 600px; 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Keep transcript readable in standard system font */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
   </style>
 </head>
@@ -213,7 +236,7 @@
       <button type="button" id="togglePasswordBtn" class="toggle-password">Show</button>
     </div>
     
-    <button id="loginBtn">Log In</button>
+    <button id="loginBtn" class="ui-btn">Log In</button>
     <div id="loginError"></div>
   </div>
 
@@ -226,12 +249,13 @@
       <p class="subtitle">Secure session transcription & clinical report</p>
 
       <div class="controls">
-        <button id="recordBtn">Record</button>
-        <button id="stopBtn" disabled>Stop</button>
-        <button id="processBtn" disabled>Generate</button>
+        <!-- Replaced text with aria-labels since the text is inside the stone image -->
+        <button id="recordBtn" class="stone-btn" aria-label="Record"></button>
+        <button id="stopBtn" class="stone-btn" aria-label="Stop" disabled></button>
+        <button id="processBtn" class="stone-btn" aria-label="Generate" disabled></button>
       </div>
 
-      <div class="status-panel">
+      <div class="status-panel" id="statusPanel">
         <span class="status-text" id="status">Ready to record.</span>
         <span class="timer" id="timer">00:00:00</span>
       </div>
@@ -265,8 +289,8 @@
     // ---------------------------------------------------------
     // SUPABASE CONFIGURATION (CLINICAL METHOD)
     // ---------------------------------------------------------
-    const SUPABASE_URL = 'https://awtyxmetipldytjmzayb.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
     
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: window.sessionStorage }
@@ -386,6 +410,7 @@
     const processBtn = document.getElementById('processBtn');
     const statusText = document.getElementById('status');
     const timerDisplay = document.getElementById('timer');
+    const statusPanel = document.getElementById('statusPanel');
     const windowsContainer = document.getElementById('windowsContainer');
     const transcriptContent = document.getElementById('transcriptContent');
     const reportContent = document.getElementById('reportContent');
@@ -427,10 +452,14 @@
 
         statusText.innerText = "Recording session (Screen locked ON)...";
         recordBtn.disabled = true;
-        recordBtn.classList.add('recording-pulse'); // Add glowing animation
         stopBtn.disabled = false;
         processBtn.disabled = true;
         windowsContainer.classList.remove('active');
+        
+        // Trigger UI state changes for recording
+        timerDisplay.classList.add('recording-active');
+        statusPanel.classList.remove('panel-stopped');
+        statusPanel.classList.add('panel-recording');
         
       } catch (err) {
         statusText.innerText = "Error: Microphone access denied.";
@@ -447,8 +476,12 @@
 
       releaseWakeLock();
       recordBtn.disabled = false;
-      recordBtn.classList.remove('recording-pulse'); // Remove glowing animation
       stopBtn.disabled = true;
+      
+      // Trigger UI state changes for stopped
+      timerDisplay.classList.remove('recording-active');
+      statusPanel.classList.remove('panel-recording');
+      statusPanel.classList.add('panel-stopped');
     });
 
     processBtn.addEventListener('click', async () => {
