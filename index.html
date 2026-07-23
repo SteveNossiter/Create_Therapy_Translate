@@ -68,16 +68,16 @@
       display: flex; 
       gap: 3%; 
       margin-bottom: 25px; 
-      justify-content: center; /* Centers stones on all devices */
+      justify-content: center; 
       align-items: center; 
-      flex-wrap: nowrap; /* Forces stones into a single row on mobile */
+      flex-wrap: nowrap; 
       width: 100%;
     }
     
     .stone-btn { 
-      flex: 1 1 0; /* Distributes width evenly across the three buttons */
+      flex: 1 1 0; 
       max-width: 140px; 
-      aspect-ratio: 2 / 1; /* Maintains the physical shape of the image files */
+      aspect-ratio: 2 / 1; 
       height: auto; 
       background-color: transparent;
       background-size: contain;
@@ -89,7 +89,7 @@
       transform: translateY(-4px);
       filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4));
       padding: 0;
-      margin: 10px 0; /* Gives the drop shadow room to render without clipping */
+      margin: 10px 0; 
     }
     
     .stone-btn:disabled { 
@@ -130,6 +130,31 @@
     }
     #loginBtn { width: 100%; }
 
+    /* Info/Security Button */
+    .info-btn {
+      background: rgba(255, 255, 255, 0.4);
+      color: var(--text);
+      border: 1px solid rgba(10, 46, 63, 0.2);
+      width: 36px;
+      height: 36px;
+      font-size: 18px;
+      font-weight: 600;
+      font-family: 'League Spartan', sans-serif;
+      border-radius: 50%;
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .info-btn:hover {
+      background: rgba(255, 255, 255, 0.8);
+      transform: scale(1.05);
+    }
+
     /* Status Panel & Inner Glows */
     .status-panel { 
       background: rgba(255, 255, 255, 0.5); 
@@ -138,8 +163,8 @@
       font-size: 16px; 
       display: flex; 
       justify-content: space-between; 
-      align-items: center; /* Aligns text cleanly with the timer */
-      gap: 15px; /* Prevents text from colliding */
+      align-items: center; 
+      gap: 15px; 
       border: 1px solid rgba(255, 255, 255, 0.4);
       transition: box-shadow 0.4s ease; 
     }
@@ -169,7 +194,7 @@
       font-weight: 600; 
       color: var(--text); 
       transition: color 0.3s ease;
-      white-space: nowrap; /* Prevents the timer from breaking into two lines */
+      white-space: nowrap; 
       flex-shrink: 0;
     }
     .timer.recording-active {
@@ -253,6 +278,99 @@
       max-height: 600px; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 46, 63, 0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .modal-content {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 650px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+      position: relative;
+    }
+    
+    .modal-overlay.active .modal-content {
+      transform: translateY(0);
+    }
+    
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(10, 46, 63, 0.05);
+      border: none;
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+      background: rgba(10, 46, 63, 0.15);
+    }
+    
+    .modal-content h3 {
+      font-family: 'Cabin Sketch', cursive;
+      color: #0e7e89;
+      font-size: 32px;
+      margin-top: 0;
+      margin-bottom: 25px;
+    }
+    
+    .modal-content h4 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      margin-top: 25px;
+      border-bottom: 2px solid rgba(14, 126, 137, 0.2);
+      padding-bottom: 8px;
+      color: var(--text);
+    }
+    
+    .modal-content p, .modal-content li {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #3a3a3c;
+    }
+    
+    .modal-content ul, .modal-content ol {
+      padding-left: 24px;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
@@ -276,7 +394,10 @@
   <div id="mainApp">
     
     <div class="glass-panel">
+      <!-- Top Utility Buttons -->
+      <button id="infoBtn" class="info-btn" title="Security & Instructions">i</button>
       <button id="logoutBtn">Log Out</button>
+      
       <h1>Create Therapy Session Notes</h1>
       <p class="subtitle">Secure session transcription & clinical report</p>
 
@@ -316,6 +437,32 @@
     </div>
   </div>
 
+  <!-- MODAL OVERLAY: Security & Instructions -->
+  <div id="infoModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeModalBtn" class="modal-close">&times;</button>
+      
+      <h3>Information & Security</h3>
+      
+      <h4>Quick Start Instructions</h4>
+      <ol>
+        <li><strong>Prepare:</strong> Ensure client consent is granted and documented.</li>
+        <li><strong>Record:</strong> Tap the Record stone. The screen will lock in an "awake" state to prevent the device from sleeping during the session.</li>
+        <li><strong>Process:</strong> Tap Stop, then Generate. Transcription usually takes 10–30 seconds depending on session length.</li>
+        <li><strong>Export:</strong> Copy or download the notes into your primary patient management system.</li>
+        <li><strong>Secure:</strong> Close this browser tab when finished to instantly clear all session data.</li>
+      </ol>
+
+      <h4>Security & Compliance</h4>
+      <ul>
+        <li><strong>Data Sovereignty:</strong> Authentication is routed through onshore servers (Oceania/Sydney), ensuring credentials do not leave Australian jurisdiction.</li>
+        <li><strong>Ephemeral Processing:</strong> Session audio is transmitted via secure, encrypted channels (TLS 1.2+) strictly for processing. The audio is immediately discarded by the AI server upon transcription and is <strong>never</strong> used to train public machine learning models.</li>
+        <li><strong>Zero-Footprint Storage:</strong> This application operates ephemerally. Login tokens are destroyed the moment this browser tab is closed. Temporary local audio backups (to prevent data loss during internet outages) are encrypted by the browser and automatically hard-deleted.</li>
+        <li><strong>Clinical Consent:</strong> As per standard clinical governance, the therapist assumes responsibility for obtaining explicit, informed consent from the client prior to initiating the recording.</li>
+      </ul>
+    </div>
+  </div>
+
   <script>
     // ---------------------------------------------------------
     // SUPABASE CONFIGURATION (CLINICAL METHOD)
@@ -333,6 +480,28 @@
     let currentTherapistName = "Therapist";
     let sessionStartTimeDate = null;
     let sessionStopTimeDate = null;
+
+    // ---------------------------------------------------------
+    // UI LOGIC & MODALS
+    // ---------------------------------------------------------
+    const infoBtn = document.getElementById('infoBtn');
+    const infoModal = document.getElementById('infoModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+
+    infoBtn.addEventListener('click', () => {
+      infoModal.classList.add('active');
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      infoModal.classList.remove('active');
+    });
+
+    // Close modal when clicking on the blurred background overlay
+    infoModal.addEventListener('click', (e) => {
+      if (e.target === infoModal) {
+        infoModal.classList.remove('active');
+      }
+    });
 
     // ---------------------------------------------------------
     // AUTHENTICATION LOGIC
@@ -540,6 +709,12 @@ You MUST format your exact response like this, using the three pipes (|||) as a 
 
 [Insert full translated English transcript here, with speakers delineated on new lines]
 |||
+Session Date: ${currentDate}
+Start Time: ${startTimeStr}
+Stop Time: ${stopTimeStr}
+
+Patient had their session with ${currentTherapistName}.
+
 Goals:
 [List assessment methods used, presenting issues, (+) goals, and (-) reduction targets]
 
@@ -548,12 +723,6 @@ Interventions:
 
 Scales:
 [List any scales used, or N/A]
-
-Session Date: ${currentDate}
-Start Time: ${startTimeStr}
-Stop Time: ${stopTimeStr}
-
-Patient had their session with ${currentTherapistName}.
 
 Summary of Client’s Narrative
 [Bullet points detailing the client's spoken history, current context, and stated goals]
