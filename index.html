@@ -160,7 +160,7 @@
     .content-box li { margin-bottom: 0.5em; }
     .content-box p { margin-top: 0; margin-bottom: 1em; }
 
-    #transcriptContainer { display: none; } /* Hidden by default */
+    #transcriptContainer { display: none; }
 
     /* Modals */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 46, 63, 0.5); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
@@ -169,6 +169,14 @@
     .modal-overlay.active .modal-content { transform: translateY(0); }
     .modal-close { position: absolute; top: 15px; right: 15px; background: rgba(10, 46, 63, 0.05); border: none; width: 32px; height: 32px; font-size: 20px; border-radius: 50%; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
     
+    /* Info Modal Specifics */
+    .modal-content h3 { font-family: 'Cabin Sketch', cursive; color: #0e7e89; font-size: 28px; margin-top: 0; margin-bottom: 20px; }
+    .modal-content h4 { font-size: 18px; margin-bottom: 10px; margin-top: 25px; border-bottom: 2px solid rgba(14, 126, 137, 0.2); padding-bottom: 8px; color: var(--text); }
+    .modal-content ul { padding-left: 20px; margin-bottom: 15px; }
+    .modal-content li { font-size: 15px; margin-bottom: 8px; color: #3a3a3c; }
+    
+    .consent-box { background: rgba(255,255,255,0.7); border: 1px dashed var(--primary); border-radius: 10px; padding: 15px; font-family: monospace; font-size: 13px; color: #333; margin-bottom: 10px; white-space: pre-wrap; }
+
     /* Archive List Styles */
     .archive-list { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
     .archive-item { background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(10, 46, 63, 0.1); border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -201,7 +209,7 @@
     <div class="glass-panel">
       <div class="top-nav">
         <button id="archiveBtn" class="nav-btn">Archive</button>
-        <button id="infoBtn" class="nav-btn">Info</button>
+        <button id="infoBtn" class="nav-btn">Info & Compliance</button>
         <button id="logoutBtn" class="nav-btn">Log Out</button>
       </div>
 
@@ -262,7 +270,7 @@
   <div id="archiveModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeArchiveBtn" class="modal-close">&times;</button>
-      <h2>Session Archive</h2>
+      <h3>Session Archive</h3>
       <p style="font-size: 14px; margin-bottom: 20px;">Your historical sessions, protected by end-to-end encryption.</p>
       
       <input type="text" id="searchArchiveInput" class="input-field" placeholder="Search Client Initials...">
@@ -273,17 +281,32 @@
     </div>
   </div>
 
-  <!-- INFO MODAL -->
+  <!-- INFO & COMPLIANCE MODAL -->
   <div id="infoModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeInfoBtn" class="modal-close">&times;</button>
-      <h2>Information & Security</h2>
+      <h3>Security & Compliance</h3>
+      
+      <h4>Global & Regional Standards</h4>
+      <ul>
+        <li><strong>Australia (Privacy Act 1988 & APPs):</strong> This application enforces strict data minimization. Audio is processed transiently and never stored. Clinical notes are encrypted client-side, ensuring compliance with the Australian Privacy Principles.</li>
+        <li><strong>United States (HIPAA):</strong> Enterprise-grade API endpoints guarantee that Protected Health Information (PHI) is isolated. Data is explicitly prohibited from being used to train Google’s public foundation models.</li>
+        <li><strong>Europe (GDPR):</strong> You retain full data sovereignty. The "Soft Delete" function satisfies clinical retention laws, while maintaining compliance with processing limitation requirements.</li>
+      </ul>
+
       <h4>Security Architecture</h4>
       <ul>
-        <li><strong>Zero-Knowledge Encryption:</strong> Notes are encrypted locally in your browser using AES-GCM via the Web Crypto API before hitting the database.</li>
-        <li><strong>Row Level Security (RLS):</strong> The database physically blocks access to any records that do not belong to your authenticated user token.</li>
-        <li><strong>Soft Deletion:</strong> Deleting a record removes it from your view but retains the encrypted ciphertext in the database for legal auditing and compliance requirements.</li>
+        <li><strong>Zero-Knowledge Encryption:</strong> Notes are encrypted locally in your browser using AES-GCM via the Web Crypto API before they ever hit the database. Only your password can unlock them.</li>
+        <li><strong>Row Level Security (RLS):</strong> The database physically blocks access to any records that do not belong to your specific authenticated user token, protecting against cross-tenant breaches.</li>
       </ul>
+
+      <h4>Client Consent Template</h4>
+      <p style="font-size: 14px; color: #555; margin-bottom: 10px;">Copy and paste this clause into your intake paperwork or practice privacy policy to ensure informed consent:</p>
+      
+      <div class="consent-box" id="consentText">I consent to the use of an AI-assisted secure transcription tool during my sessions to assist my therapist in clinical note-taking. I understand that the audio is transmitted via encrypted channels strictly for transient processing and is immediately destroyed. Audio is never stored and is explicitly prohibited from being used to train public AI models. All generated clinical notes are secured using zero-knowledge encryption in compliance with the Australian Privacy Principles (APPs), HIPAA, and GDPR standards.</div>
+      
+      <button class="export-btn" onclick="copyContent('consentText', this)">Copy Consent Clause</button>
+
     </div>
   </div>
 
@@ -299,6 +322,7 @@
     });
 
     let currentUserId = null;
+    let currentTherapistName = "Therapist"; // Default fallback
     let currentUserPassword = ""; // Stored ephemerally to act as the encryption vault key
 
     // ---------------------------------------------------------
@@ -325,7 +349,6 @@
         { name: "AES-GCM", iv: iv }, key, encoded
       );
 
-      // Concatenate IV and Ciphertext (Base64) to fit standard text schemas securely
       const ivB64 = btoa(String.fromCharCode(...iv));
       const encB64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
       return ivB64 + ':' + encB64;
@@ -371,6 +394,7 @@
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
         currentUserId = session.user.id;
+        currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
         // If they refreshed, we lose the password from memory. Must prompt them to re-login for vault access.
         await supabaseClient.auth.signOut(); 
       }
@@ -391,6 +415,7 @@
         
         if (data.session) {
           currentUserId = data.session.user.id;
+          currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email;
           currentUserPassword = passwordInput.value; // Store temporarily for encryption operations
           
           loginScreen.style.display = 'none';
@@ -546,11 +571,14 @@
       const formData = new FormData();
       formData.append('audio', recordedAudioBlob, 'session_audio');
       formData.append('mimeType', mimeType);
-      formData.append('isMeetingMode', selectedTemplate === 'meeting' ? 'true' : 'false'); // Maps to Cloudflare logic
+      formData.append('isMeetingMode', selectedTemplate === 'meeting' ? 'true' : 'false'); 
       formData.append('currentDate', currentDate);
       formData.append('startTimeStr', startTimeStr);
       formData.append('stopTimeStr', stopTimeStr);
-      formData.append('currentTherapistName', `Location: ${locationVal} | Attendees: ${attendeesVal}`); 
+      
+      // FIXED: Ensure the therapist name is sent accurately along with location/attendees metadata
+      const combinedMetadataString = `${currentTherapistName} | Location: ${locationVal} | Attendees: ${attendeesVal}`;
+      formData.append('currentTherapistName', combinedMetadataString); 
 
       let finalReportHtml = "";
       let finalTranscriptHtml = "";
@@ -692,6 +720,19 @@
     // ---------------------------------------------------------
     async function copyContent(elementId, btnElement) {
       const contentBox = document.getElementById(elementId);
+      
+      // Check if it's the specific consent box to copy raw text instead of HTML
+      if (elementId === 'consentText') {
+        try {
+          await navigator.clipboard.writeText(contentBox.innerText);
+          const originalText = btnElement.innerText;
+          btnElement.innerText = "Copied!";
+          setTimeout(() => btnElement.innerText = originalText, 2000);
+        } catch (err) { alert("Failed to copy text."); }
+        return;
+      }
+
+      // Default rich text copy logic for transcripts and reports
       try {
         const clipboardItem = new ClipboardItem({
           "text/plain": new Blob([contentBox.innerText], { type: "text/plain" }),
