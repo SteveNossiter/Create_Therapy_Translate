@@ -6,8 +6,9 @@
   <title>Create Therapy Session Notes</title>
   <link rel="icon" href="data:,">
   
-  <!-- Load the Supabase Library & Google Fonts -->
+  <!-- Load the Supabase Library, Marked.js (for formatting), & Google Fonts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&family=League+Spartan:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -20,6 +21,7 @@
       --danger-dark: #b32a22;
       --success: #34c759; 
       --success-dark: #248a3d;
+      --warning: #ff9500;
       --text: #0a2e3f; 
     }
     
@@ -155,6 +157,69 @@
       transform: scale(1.05);
     }
 
+    /* Mode Toggle Switch */
+    .toggle-container {
+      position: absolute;
+      top: 115px; 
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(10, 46, 63, 0.2);
+    }
+    
+    .toggle-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    
+    .switch input { 
+      opacity: 0; 
+      width: 0; 
+      height: 0; 
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--primary);
+      transition: .4s;
+      border-radius: 24px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    input:checked + .slider {
+      background-color: var(--warning); 
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
     /* Status Panel & Inner Glows */
     .status-panel { 
       background: rgba(255, 255, 255, 0.5); 
@@ -264,10 +329,9 @@
       transform: translateY(0);
     }
     
-    /* Transparent inset box for the actual text */
+    /* Transparent inset box - RICH TEXT FORMATTING */
     .content-box { 
-      white-space: pre-wrap; 
-      font-size: 15px; 
+      font-size: 11pt; /* Base body text size for word processors */
       color: #1c1c1e; 
       flex-grow: 1; 
       background: rgba(255, 255, 255, 0.4); 
@@ -277,6 +341,35 @@
       overflow-y: auto; 
       max-height: 600px; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* Force generated headings to 14pt Bold */
+    .content-box h3 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+
+    .content-box h2, .content-box h1 {
+      font-size: 16pt;
+      font-weight: bold;
+    }
+
+    /* Keep lists looking clean */
+    .content-box ul {
+      padding-left: 24px;
+      margin-top: 0.5em;
+      margin-bottom: 1em;
+    }
+
+    .content-box li {
+      margin-bottom: 0.5em;
+    }
+
+    .content-box p {
+      margin-top: 0;
+      margin-bottom: 1em;
     }
 
     /* Modal Styling */
@@ -398,6 +491,16 @@
       <button id="infoBtn" class="info-btn" title="Security & Instructions">i</button>
       <button id="logoutBtn">Log Out</button>
       
+      <!-- Mode Toggle Switch -->
+      <div class="toggle-container">
+        <span class="toggle-label">Therapy</span>
+        <label class="switch">
+          <input type="checkbox" id="modeToggle">
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-label">Meeting</span>
+      </div>
+
       <h1>Create Therapy Session Notes</h1>
       <p class="subtitle">Secure session transcription & clinical report</p>
 
@@ -422,17 +525,18 @@
           <button class="export-btn" onclick="copyContent('transcriptContent', this)">Copy</button>
           <button class="export-btn" onclick="downloadContent('transcriptContent', 'Transcript')">Download</button>
         </div>
-        <div id="transcriptContent" class="content-box">Awaiting data...</div>
+        <!-- Setting contenteditable="true" allows slight manual tweaks before copying -->
+        <div id="transcriptContent" class="content-box" contenteditable="true">Awaiting data...</div>
       </div>
 
       <div class="window-card">
-        <h2>Clinical Report</h2>
+        <h2>Report</h2>
         <div class="export-controls">
-          <button class="export-btn" onclick="shareContent('reportContent', 'Clinical Report')">Share</button>
+          <button class="export-btn" onclick="shareContent('reportContent', 'Session Report')">Share</button>
           <button class="export-btn" onclick="copyContent('reportContent', this)">Copy</button>
-          <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
+          <button class="export-btn" onclick="downloadContent('reportContent', 'Report')">Download</button>
         </div>
-        <div id="reportContent" class="content-box">Awaiting data...</div>
+        <div id="reportContent" class="content-box" contenteditable="true">Awaiting data...</div>
       </div>
     </div>
   </div>
@@ -487,6 +591,7 @@
     const infoBtn = document.getElementById('infoBtn');
     const infoModal = document.getElementById('infoModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
+    const modeToggle = document.getElementById('modeToggle');
 
     infoBtn.addEventListener('click', () => {
       infoModal.classList.add('active');
@@ -496,7 +601,6 @@
       infoModal.classList.remove('active');
     });
 
-    // Close modal when clicking on the blurred background overlay
     infoModal.addEventListener('click', (e) => {
       if (e.target === infoModal) {
         infoModal.classList.remove('active');
@@ -656,7 +760,6 @@
         processBtn.disabled = true;
         windowsContainer.classList.remove('active');
         
-        // Trigger UI state changes for recording
         timerDisplay.classList.add('recording-active');
         statusPanel.classList.remove('panel-stopped');
         statusPanel.classList.add('panel-recording');
@@ -678,7 +781,6 @@
       recordBtn.disabled = false;
       stopBtn.disabled = true;
       
-      // Trigger UI state changes for stopped
       timerDisplay.classList.remove('recording-active');
       statusPanel.classList.remove('panel-recording');
       statusPanel.classList.add('panel-stopped');
@@ -687,93 +789,124 @@
     processBtn.addEventListener('click', async () => {
       if (!audioBase64) return;
       
-      statusText.innerText = "Transcribing and generating report...";
+      statusText.innerText = "Transcribing and generating document...";
       processBtn.disabled = true;
       windowsContainer.classList.add('active');
-      transcriptContent.innerText = "Processing audio... (This usually takes 10-30 seconds)";
-      reportContent.innerText = "Analyzing transcript for clinical notes...";
+      transcriptContent.innerHTML = "<p>Processing audio... (This usually takes 10-30 seconds)</p>";
+      reportContent.innerHTML = "<p>Analyzing transcript...</p>";
 
       const currentDate = sessionStartTimeDate ? sessionStartTimeDate.toLocaleDateString('en-AU') : new Date().toLocaleDateString('en-AU');
       const startTimeStr = sessionStartTimeDate ? sessionStartTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
       const stopTimeStr = sessionStopTimeDate ? sessionStopTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
+      const isMeetingMode = modeToggle.checked;
 
-      const SYSTEM_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
+      // THERAPY PROMPT
+      const THERAPY_PROMPT = `You are an expert clinical documentation assistant for an arts therapy practice. 
 
 Instructions:
-1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript. You MUST separate the dialogue by speaker. Every time a different person speaks, start a new line and label them clearly (e.g., **Speaker 1:** [dialogue], **Speaker 2:** [dialogue]).
-2. Clinical Report: Based on the transcript, generate a comprehensive clinical session report following the exact structure and headings provided below. 
+1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript. You MUST separate the dialogue by speaker on new lines.
+2. Clinical Report: Based on the transcript, generate a comprehensive clinical session report following the exact headings below. 
 
-Use objective, professional, and clinical language. If a specific section's information is not mentioned in the audio (such as "Scales"), leave it blank or write "N/A". 
+Use strict Markdown formatting. Use level 3 headings (###) for all section titles. Use asterisks (*) for bullet points.
 
 You MUST format your exact response like this, using the three pipes (|||) as a separator:
 
-[Insert full translated English transcript here, with speakers delineated on new lines]
+### Session Transcript
+[Insert full translated English transcript here]
 |||
-Session Date: ${currentDate}
-Start Time: ${startTimeStr}
-Stop Time: ${stopTimeStr}
+### Session Details
+* Date: ${currentDate}
+* Start Time: ${startTimeStr}
+* Stop Time: ${stopTimeStr}
+* Therapist: ${currentTherapistName}
 
-Patient had their session with ${currentTherapistName}.
+### Goals
+* [List assessment methods used, presenting issues, (+) goals, and (-) reduction targets]
 
-Goals:
-[List assessment methods used, presenting issues, (+) goals, and (-) reduction targets]
+### Interventions
+* [Briefly list primary practical interventions/mediums used]
 
-Interventions:
-[Briefly list primary practical interventions/mediums used]
+### Scales
+* [List any scales used, or N/A]
 
-Scales:
-[List any scales used, or N/A]
+### Summary of Client’s Narrative
+* [Bullet points detailing the client's spoken history, current context, and stated goals]
 
-Summary of Client’s Narrative
-[Bullet points detailing the client's spoken history, current context, and stated goals]
+### Client’s Behaviour
+* [Bullet points detailing engagement, initiative, physical actions, and capacity for self-reflection]
 
-Client’s Behaviour
-[Bullet points detailing engagement, initiative, physical actions, and capacity for self-reflection]
+### Client’s Feelings
+* [Bullet points detailing expressed emotions, desires, and reported affect]
 
-Client’s Feelings
-[Bullet points detailing expressed emotions, desires, and reported affect]
+### Therapist’s Interventions
+* [Bullet points detailing your specific actions, psychoeducation provided, and therapeutic framing]
 
-Therapist’s Interventions
-[Bullet points detailing your specific actions, psychoeducation provided, and therapeutic framing]
+### Client’s Response to Art Therapy
+* [Bullet points detailing specific reactions to the creative medium, symbolic linking, and affect during artmaking]
 
-Client’s Response to Art Therapy
-[Bullet points detailing specific reactions to the creative medium, symbolic linking, and affect during artmaking]
+### Evidence of Significant Departure from Anticipated Progress
+* [Note any departures, or state "No significant departures"]
 
-Evidence of Significant Departure from Anticipated Progress
-[Note any departures, or state "No significant departures"]
+### Major Life Events
+* [Bullet points of any recent or impending major life transitions]
 
-Major Life Events
-[Bullet points of any recent or impending major life transitions]
+### Change of Assessment/Plan
+* [Bullet points detailing any shifts in session frequency or clinical focus]
 
-Change of Assessment/Plan
-[Bullet points detailing any shifts in session frequency or clinical focus]
+### Client Comments About Process
+* [Bullet points detailing what the client said about the therapy/artmaking process itself]
 
-PROCESS
+### Therapist’s Observations
+* [Bullet points detailing your clinical observations of their insight, symbolic thinking, and adaptability]
 
-Client Comments About Process
-[Bullet points detailing what the client said about the therapy/artmaking process itself]
+### Agreement About Between-Session Activities
+* [Homework or reflections set for the client]
 
-Therapist’s Observations
-[Bullet points detailing your clinical observations of their insight, symbolic thinking, and adaptability]
+### Issues to Be Raised During Session
+* [Specific themes, mediums, or discussions to carry over to the next session]
 
-NOTES FOR NEXT SESSION
+### Issues for Therapy Supervision
+* [Any clinical risks or monitoring required, or "None identified"]`;
 
-Agreement About Between-Session Activities
-[Homework or reflections set for the client]
+      // MEETING PROMPT
+      const MEETING_PROMPT = `You are an expert executive administrative assistant. 
 
-Issues to Be Raised During Session
-[Specific themes, mediums, or discussions to carry over to the next session]
+Instructions:
+1. Transcription: Listen to the provided audio. Translate any non-English speech into English and provide a highly accurate, clean transcript. You MUST separate the dialogue by speaker on new lines.
+2. Meeting Minutes: Based on the transcript, generate comprehensive professional meeting minutes following the exact headings below. 
 
-Issues for Therapy Supervision
-[Any clinical risks or monitoring required, or "None identified"]`;
+Use strict Markdown formatting. Use level 3 headings (###) for all section titles. Use asterisks (*) for bullet points.
+
+You MUST format your exact response like this, using the three pipes (|||) as a separator:
+
+### Meeting Transcript
+[Insert full translated English transcript here]
+|||
+### Meeting Details
+* Date: ${currentDate}
+* Start Time: ${startTimeStr}
+* Stop Time: ${stopTimeStr}
+* Recorded By: ${currentTherapistName}
+
+### Executive Summary
+* [1-2 short bullet points summarizing the core purpose and final outcome of the meeting]
+
+### Key Decisions Made
+* [Bullet points of all finalized decisions]
+
+### Action Items
+* [Bullet points detailing exactly what needs to be done, who is responsible, and any mentioned deadlines]
+
+### Discussion Points
+* [Detailed bullet points outlining the main topics of conversation, perspectives shared, and general flow of the meeting]`;
 
       const payload = {
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        system_instruction: { parts: [{ text: isMeetingMode ? MEETING_PROMPT : THERAPY_PROMPT }] },
         contents: [{
           role: "user",
           parts: [
             { inlineData: { mimeType: mimeType, data: audioBase64 } },
-            { text: "Process this session audio." }
+            { text: "Process this audio." }
           ]
         }]
       };
@@ -796,24 +929,25 @@ Issues for Therapy Supervision
         let sections = rawText.split('|||');
         
         if (sections.length < 2) {
-          const fallbackSplit = rawText.split(/(?:\n|^)(?=\*\*Goals:\*\*|Goals:)/i);
+          const fallbackSplit = rawText.split(/(?:\n|^)(?=### Session Details|### Meeting Details)/i);
           if (fallbackSplit.length >= 2) {
             sections = [fallbackSplit[0], fallbackSplit.slice(1).join('\n')];
           }
         }
         
+        // Feed the Markdown text directly into Marked.js to output structured HTML!
         if (sections.length >= 2) {
-          transcriptContent.innerHTML = sections[0].trim().replace(/\n/g, '<br>');
-          reportContent.innerHTML = sections[1].trim().replace(/\n/g, '<br>');
+          transcriptContent.innerHTML = marked.parse(sections[0].trim());
+          reportContent.innerHTML = marked.parse(sections[1].trim());
         } else {
-          transcriptContent.innerHTML = "Delimiter missing. Full output below:<br><br>" + rawText.replace(/\n/g, '<br>');
-          reportContent.innerHTML = "See Transcript window.";
+          transcriptContent.innerHTML = marked.parse("Delimiter missing. Full output below:\n\n" + rawText);
+          reportContent.innerHTML = "<p>See Transcript window.</p>";
         }
         
         statusText.innerText = "Success.";
       } catch (err) {
-        transcriptContent.innerHTML = `<strong style="color: red;">${err.message}</strong>`;
-        reportContent.innerText = "Processing failed. See error in Transcript window.";
+        transcriptContent.innerHTML = `<p style="color: red; font-weight: bold;">${err.message}</p>`;
+        reportContent.innerHTML = "<p>Processing failed. See error in Transcript window.</p>";
         statusText.innerText = "Processing failed.";
       }
       processBtn.disabled = false;
@@ -836,14 +970,21 @@ Issues for Therapy Supervision
       } else { alert("Web Share not supported on this browser."); }
     }
 
+    // Updated Copy function specifically targets the rich HTML content
     async function copyContent(elementId, btnElement) {
-      const text = document.getElementById(elementId).innerText;
+      const contentBox = document.getElementById(elementId);
+      
       try {
-        await navigator.clipboard.writeText(text);
+        const clipboardItem = new ClipboardItem({
+          "text/plain": new Blob([contentBox.innerText], { type: "text/plain" }),
+          "text/html": new Blob([contentBox.innerHTML], { type: "text/html" })
+        });
+        await navigator.clipboard.write([clipboardItem]);
+        
         const originalText = btnElement.innerText;
         btnElement.innerText = "Copied!";
         setTimeout(() => btnElement.innerText = originalText, 2000);
-      } catch (err) { alert("Failed to copy text."); }
+      } catch (err) { alert("Failed to copy rich text. Make sure you are using a modern browser."); }
     }
 
     function downloadContent(elementId, prefix) {
