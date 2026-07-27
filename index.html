@@ -161,7 +161,7 @@
       <!-- Pre-Session Metadata Inputs -->
       <div class="metadata-grid">
         <select id="templateSelect" class="input-field">
-          <option value="therapy">Art Therapy Report</option>
+          <option value="therapy">Standard Therapy Report</option>
           <option value="meeting">Executive Meeting Minutes</option>
         </select>
         <input type="text" id="clientRefInput" class="input-field" placeholder="Client Initials / ID">
@@ -507,9 +507,9 @@
       const attendeesVal = document.getElementById('attendeesInput').value.trim() || "None specified";
       const selectedTemplate = document.getElementById('templateSelect').value;
 
-      statusText.innerText = "Uploading & processing via Cloudflare...";
       statusPanel.className = 'status-panel panel-processing';
-      processingWarning.classList.add('active'); processBtn.disabled = true;
+      processingWarning.classList.add('active'); 
+      processBtn.disabled = true;
       
       const windowsContainer = document.getElementById('windowsContainer');
       windowsContainer.classList.add('active');
@@ -523,28 +523,61 @@
       const startTimeStr = sessionStartTimeDate ? sessionStartTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
       const stopTimeStr = sessionStopTimeDate ? sessionStopTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
 
-      const formData = new FormData();
-      formData.append('audio', recordedAudioBlob, 'session_audio');
-      formData.append('mimeType', mimeType);
-      formData.append('isMeetingMode', selectedTemplate === 'meeting' ? 'true' : 'false'); 
-      formData.append('currentDate', currentDate);
-      formData.append('startTimeStr', startTimeStr);
-      formData.append('stopTimeStr', stopTimeStr);
-      
-      // Sending metadata separately to fix the formatting issue
-      formData.append('currentTherapistName', currentTherapistName); 
-      formData.append('locationVal', locationVal); 
-      formData.append('attendeesVal', attendeesVal); 
-      formData.append('clientRef', clientRef); 
-
-      let finalReportHtml = "";
-      let finalTranscriptHtml = "";
-
       try {
-        const response = await fetch(WORKER_URL, { method: 'POST', body: formData });
-        const data = await response.json();
+        // ==========================================
+        // STEP 1: Upload Audio to Google
+        // ==========================================
+        statusText.innerText = "Step 1/2: Uploading session securely (Takes 30-40s)...";
         
-        if (!response.ok || data.error) throw new Error(`API Error: ${data.error?.message || response.status}`);
+        const uploadFormData = new FormData();
+        uploadFormData.append('audio', recordedAudioBlob, 'session_audio');
+        uploadFormData.append('mimeType', mimeType);
+
+        const uploadRes = await fetch(WORKER_URL, { 
+          method: 'POST', 
+          headers: { 'X-Action': 'upload' },
+          body: uploadFormData 
+        });
+
+        // Catch non-JSON HTML timeout errors before they crash the app
+        if (!uploadRes.ok) {
+          const rawError = await uploadRes.text();
+          throw new Error(`Upload Failed: ${rawError.substring(0, 100)}...`);
+        }
+
+        const uploadData = await uploadRes.json();
+        const fileUri = uploadData.fileUri;
+
+        // ==========================================
+        // STEP 2: Generate Report via AI
+        // ==========================================
+        statusText.innerText = "Step 2/2: AI analyzing session (Takes ~20s)...";
+
+        const generatePayload = {
+          fileUri: fileUri,
+          mimeType: mimeType,
+          isMeetingMode: selectedTemplate === 'meeting',
+          currentDate: currentDate,
+          startTimeStr: startTimeStr,
+          stopTimeStr: stopTimeStr,
+          currentTherapistName: currentTherapistName,
+          locationVal: locationVal,
+          attendeesVal: attendeesVal,
+          clientRef: clientRef
+        };
+
+        const generateRes = await fetch(WORKER_URL, { 
+          method: 'POST', 
+          headers: { 'X-Action': 'generate', 'Content-Type': 'application/json' },
+          body: JSON.stringify(generatePayload) 
+        });
+
+        if (!generateRes.ok) {
+          const rawError = await generateRes.text();
+          throw new Error(`Analysis Failed: ${rawError.substring(0, 100)}...`);
+        }
+
+        const data = await generateRes.json();
         
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         let sections = rawText.split('|||');
@@ -554,6 +587,9 @@
           if (fallbackSplit.length >= 2) sections = [fallbackSplit[0], fallbackSplit.slice(1).join('\n')];
         }
         
+        let finalTranscriptHtml = "";
+        let finalReportHtml = "";
+
         if (sections.length >= 2) {
           finalTranscriptHtml = marked.parse(sections[0].trim());
           finalReportHtml = marked.parse(sections[1].trim());
@@ -566,7 +602,9 @@
         reportContent.innerHTML = finalReportHtml;
         statusText.innerText = "Success. Saving encrypted record to vault...";
 
-        // ENCRYPT & SAVE TO SUPABASE DB
+        // ==========================================
+        // STEP 3: Local Browser Encryption & Save
+        // ==========================================
         const encryptedReport = await encryptText(finalReportHtml, currentUserPassword);
         const encryptedTranscript = await encryptText(finalTranscriptHtml, currentUserPassword);
 
@@ -602,7 +640,7 @@
     document.getElementById('archiveBtn').addEventListener('click', () => { archiveModal.classList.add('active'); fetchArchive(); });
     document.getElementById('closeArchiveBtn').addEventListener('click', () => archiveModal.classList.remove('active'));
 
-async function fetchArchive(searchQuery = "") {
+    async function fetchArchive(searchQuery = "") {
       archiveList.innerHTML = '<p style="text-align: center;">Decrypting vault records...</p>';
       try {
         let query = supabaseClient.from('session_notes')
@@ -624,11 +662,9 @@ async function fetchArchive(searchQuery = "") {
           const creationDate = new Date(record.created_at);
           const dateString = creationDate.toLocaleDateString() + ' ' + creationDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
           
-          // Calculate the 30-day countdown
           const expirationDate = new Date(creationDate.getTime() + (30 * 24 * 60 * 60 * 1000));
           const daysRemaining = Math.ceil((expirationDate - now) / (1000 * 60 * 60 * 24));
           
-          // Dynamic styling for the countdown text
           let countdownHtml = "";
           if (daysRemaining > 5) {
             countdownHtml = `<span style="font-size: 12px; color: #3a5a6b; background: rgba(58, 90, 107, 0.1); padding: 2px 8px; border-radius: 10px;">Expires in ${daysRemaining} days</span>`;
@@ -674,9 +710,7 @@ async function fetchArchive(searchQuery = "") {
     };
 
     window.softDeleteRecord = async function(id) {
-      // Strict confirmation warning
       if (!confirm("WARNING: Are you absolutely sure you want to delete this record?\n\nThis action will delete it forever and you cannot get it back.")) return;
-      
       try {
         const { error } = await supabaseClient.from('session_notes')
           .update({ deleted_at: new Date().toISOString() })
