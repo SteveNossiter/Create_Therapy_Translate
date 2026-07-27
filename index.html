@@ -161,7 +161,7 @@
       <!-- Pre-Session Metadata Inputs -->
       <div class="metadata-grid">
         <select id="templateSelect" class="input-field">
-          <option value="therapy">Art Therapy Report</option>
+          <option value="therapy">Standard Therapy Report</option>
           <option value="meeting">Executive Meeting Minutes</option>
         </select>
         <input type="text" id="clientRefInput" class="input-field" placeholder="Client Initials / ID">
@@ -406,7 +406,6 @@
 
     document.getElementById('logoutBtn').addEventListener('click', performLogout);
 
-    // Workspace Reset / Clear Session Logic
     document.getElementById('resetBtn').addEventListener('click', () => {
       if (!confirm("Clear the screen for your next session? The current notes have been safely encrypted and can be retrieved from your Archive anytime.")) return;
       
@@ -431,7 +430,6 @@
       clearInterval(timerInterval);
     });
 
-    // Transcript UI Toggle
     const toggleTranscriptBtn = document.getElementById('toggleTranscriptBtn');
     const transcriptContainer = document.getElementById('transcriptContainer');
     toggleTranscriptBtn.addEventListener('click', () => {
@@ -442,7 +440,6 @@
       }
     });
 
-    // Info Modal
     const infoModal = document.getElementById('infoModal');
     document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('active'));
     document.getElementById('closeInfoBtn').addEventListener('click', () => infoModal.classList.remove('active'));
@@ -507,7 +504,7 @@
 
       const clientRef = document.getElementById('clientRefInput').value.trim() || "Unknown Client";
       const locationVal = document.getElementById('locationInput').value.trim() || "Standard";
-      const attendeesVal = document.getElementById('attendeesInput').value.trim() || "N/A";
+      const attendeesVal = document.getElementById('attendeesInput').value.trim() || "None specified";
       const selectedTemplate = document.getElementById('templateSelect').value;
 
       statusText.innerText = "Uploading & processing via Cloudflare...";
@@ -533,9 +530,15 @@
       formData.append('currentDate', currentDate);
       formData.append('startTimeStr', startTimeStr);
       formData.append('stopTimeStr', stopTimeStr);
-      formData.append('currentTherapistName', `${currentTherapistName} | Location: ${locationVal} | Attendees: ${attendeesVal}`); 
+      
+      // Sending metadata separately to fix the formatting issue
+      formData.append('currentTherapistName', currentTherapistName); 
+      formData.append('locationVal', locationVal); 
+      formData.append('attendeesVal', attendeesVal); 
+      formData.append('clientRef', clientRef); 
 
-      let finalReportHtml = ""; let finalTranscriptHtml = "";
+      let finalReportHtml = "";
+      let finalTranscriptHtml = "";
 
       try {
         const response = await fetch(WORKER_URL, { method: 'POST', body: formData });
@@ -563,12 +566,15 @@
         reportContent.innerHTML = finalReportHtml;
         statusText.innerText = "Success. Saving encrypted record to vault...";
 
-        // ENCRYPT & SAVE TO SUPABASE DB LOCALLY
+        // ENCRYPT & SAVE TO SUPABASE DB
         const encryptedReport = await encryptText(finalReportHtml, currentUserPassword);
         const encryptedTranscript = await encryptText(finalTranscriptHtml, currentUserPassword);
 
         const { error: dbError } = await supabaseClient.from('session_notes').insert({
-          therapist_id: currentUserId, client_reference: clientRef, report_text: encryptedReport, transcript_text: encryptedTranscript
+          therapist_id: currentUserId,
+          client_reference: clientRef,
+          report_text: encryptedReport,
+          transcript_text: encryptedTranscript
         });
 
         if (dbError) throw new Error("Document generated, but failed to save to vault: " + dbError.message);
@@ -577,9 +583,12 @@
         statusPanel.className = 'status-panel panel-stopped';
       } catch (err) {
         reportContent.innerHTML = `<p style="color: red; font-weight: bold;">${err.message}</p>`;
-        statusText.innerText = "Processing failed."; statusPanel.className = 'status-panel';
+        statusText.innerText = "Processing failed.";
+        statusPanel.className = 'status-panel';
       } finally {
-        processingWarning.classList.remove('active'); processBtn.disabled = false; releaseWakeLock();
+        processingWarning.classList.remove('active');
+        processBtn.disabled = false;
+        releaseWakeLock();
       }
     });
 
@@ -641,7 +650,10 @@
     window.softDeleteRecord = async function(id) {
       if (!confirm("Are you sure you want to remove this record? It will be soft-deleted for compliance.")) return;
       try {
-        const { error } = await supabaseClient.from('session_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+        const { error } = await supabaseClient.from('session_notes')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', id);
+          
         if (error) throw error;
         fetchArchive(searchArchiveInput.value.trim()); 
       } catch (err) { alert("Failed to delete record: " + err.message); }
@@ -656,7 +668,8 @@
         try {
           await navigator.clipboard.writeText(contentBox.innerText);
           const originalText = btnElement.innerText; btnElement.innerText = "Copied!"; setTimeout(() => btnElement.innerText = originalText, 2000);
-        } catch (err) { alert("Failed to copy text."); } return;
+        } catch (err) { alert("Failed to copy text."); }
+        return;
       }
       try {
         const clipboardItem = new ClipboardItem({ "text/plain": new Blob([contentBox.innerText], { type: "text/plain" }), "text/html": new Blob([contentBox.innerHTML], { type: "text/html" }) });
