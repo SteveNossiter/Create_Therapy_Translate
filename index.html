@@ -38,14 +38,20 @@
       background-attachment: fixed;
     }
     
-    h1 { font-family: 'Momo Trust Display', cursive; font-size: 36px; font-weight: 700; color: #0e7e89; margin-bottom: 2px; margin-top: 0; letter-spacing: 1px; }
+    h1 { font-family: 'Momo Trust Display', cursive; font-size: 46px; font-weight: 700; color: #0e7e89; margin-bottom: 5px; margin-top: 35px; letter-spacing: 1px; }
     h2 { margin-top: 0; font-size: 22px; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.5); padding-bottom: 12px; margin-bottom: 15px; }
     p.subtitle { color: #3a5a6b; font-weight: 400; margin-top: 0; margin-bottom: 20px; font-size: 18px; }
     
     .glass-panel { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 24px; padding: 30px; margin-bottom: 30px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); position: relative; }
-    .top-nav { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-    .nav-btn { background: rgba(255, 255, 255, 0.5); color: var(--text); border: 1px solid rgba(10, 46, 63, 0.2); padding: 8px 14px; font-size: 14px; font-weight: 600; border-radius: 50px; cursor: pointer; transition: all 0.2s ease; }
-    .nav-btn:hover { background: rgba(255, 255, 255, 0.9); transform: scale(1.02); }
+    
+    /* Hamburger Menu Architecture */
+    .menu-container { position: absolute; top: 20px; right: 20px; z-index: 100; }
+    .menu-toggle { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(10, 46, 63, 0.2); color: var(--text); font-size: 22px; font-weight: bold; cursor: pointer; border-radius: 8px; padding: 6px 12px; line-height: 1; transition: all 0.2s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .menu-toggle:hover { background: rgba(255, 255, 255, 1); transform: scale(1.05); }
+    .dropdown-menu { display: none; position: absolute; top: 45px; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(10, 46, 63, 0.1); border-radius: 12px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); flex-direction: column; gap: 8px; min-width: 180px; }
+    .dropdown-menu.active { display: flex; }
+    .nav-btn { background: transparent; color: var(--text); border: none; padding: 10px 15px; font-size: 15px; font-weight: 600; font-family: 'League Spartan', sans-serif; border-radius: 8px; cursor: pointer; transition: background 0.2s ease; text-align: left; width: 100%; }
+    .nav-btn:hover { background: rgba(10, 46, 63, 0.05); }
 
     .metadata-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 25px; background: rgba(255,255,255,0.4); padding: 15px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.4); }
     @media (min-width: 600px) { .metadata-grid { grid-template-columns: 1fr 1fr; } }
@@ -113,7 +119,7 @@
     .modal-overlay.active .modal-content { transform: translateY(0); }
     .modal-close { position: absolute; top: 15px; right: 15px; background: rgba(10, 46, 63, 0.05); border: none; width: 32px; height: 32px; font-size: 20px; border-radius: 50%; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
     
-    .modal-content h3 { font-family: 'Cabin Sketch', cursive; color: #0e7e89; font-size: 28px; margin-top: 0; margin-bottom: 20px; }
+    .modal-content h3 { font-family: 'Momo Trust Display', cursive; color: #0e7e89; font-size: 28px; margin-top: 0; margin-bottom: 20px; }
     .modal-content h4 { font-size: 18px; margin-bottom: 10px; margin-top: 25px; border-bottom: 2px solid rgba(14, 126, 137, 0.2); padding-bottom: 8px; color: var(--text); }
     .modal-content ul, .modal-content ol { padding-left: 20px; margin-bottom: 15px; }
     .modal-content li { font-size: 15px; margin-bottom: 8px; color: #3a3a3c; }
@@ -149,10 +155,15 @@
   <!-- MAIN APPLICATION -->
   <div id="mainApp">
     <div class="glass-panel">
-      <div class="top-nav">
-        <button id="archiveBtn" class="nav-btn">Archive</button>
-        <button id="infoBtn" class="nav-btn">Info & Instructions</button>
-        <button id="logoutBtn" class="nav-btn">Log Out</button>
+      
+      <!-- New 3-Bar Hamburger Menu -->
+      <div class="menu-container">
+        <button id="menuToggle" class="menu-toggle">☰</button>
+        <div id="dropdownMenu" class="dropdown-menu">
+          <button id="archiveBtn" class="nav-btn">Archive</button>
+          <button id="infoBtn" class="nav-btn">Info & Instructions</button>
+          <button id="logoutBtn" class="nav-btn">Log Out</button>
+        </div>
       </div>
 
       <h1>Create Therapy Notes</h1>
@@ -161,7 +172,7 @@
       <!-- Pre-Session Metadata Inputs -->
       <div class="metadata-grid">
         <select id="templateSelect" class="input-field">
-          <option value="therapy">Standard Therapy Report</option>
+          <option value="therapy">Art Therapy Report</option>
           <option value="meeting">Executive Meeting Minutes</option>
         </select>
         <input type="text" id="clientRefInput" class="input-field" placeholder="Client Initials / ID">
@@ -275,6 +286,30 @@
     let currentUserId = null;
     let currentTherapistName = "Therapist";
     let currentUserPassword = ""; 
+
+    // ---------------------------------------------------------
+    // MENU LOGIC
+    // ---------------------------------------------------------
+    const menuToggle = document.getElementById('menuToggle');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+
+    menuToggle.addEventListener('click', (e) => {
+      dropdownMenu.classList.toggle('active');
+      e.stopPropagation();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdownMenu.contains(e.target) && e.target !== menuToggle) {
+        dropdownMenu.classList.remove('active');
+      }
+    });
+    
+    // Close menu when a navigation button is clicked
+    document.querySelectorAll('.dropdown-menu .nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        dropdownMenu.classList.remove('active');
+      });
+    });
 
     // ---------------------------------------------------------
     // WEB CRYPTO API: AES-GCM ENCRYPTION LOGIC
@@ -539,7 +574,6 @@
           body: uploadFormData 
         });
 
-        // Catch non-JSON HTML timeout errors before they crash the app
         if (!uploadRes.ok) {
           const rawError = await uploadRes.text();
           throw new Error(`Upload Failed: ${rawError.substring(0, 100)}...`);
