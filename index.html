@@ -161,7 +161,7 @@
       <!-- Pre-Session Metadata Inputs -->
       <div class="metadata-grid">
         <select id="templateSelect" class="input-field">
-          <option value="therapy">Standard Therapy Report</option>
+          <option value="therapy">Art Therapy Report</option>
           <option value="meeting">Executive Meeting Minutes</option>
         </select>
         <input type="text" id="clientRefInput" class="input-field" placeholder="Client Initials / ID">
@@ -602,10 +602,14 @@
     document.getElementById('archiveBtn').addEventListener('click', () => { archiveModal.classList.add('active'); fetchArchive(); });
     document.getElementById('closeArchiveBtn').addEventListener('click', () => archiveModal.classList.remove('active'));
 
-    async function fetchArchive(searchQuery = "") {
+async function fetchArchive(searchQuery = "") {
       archiveList.innerHTML = '<p style="text-align: center;">Decrypting vault records...</p>';
       try {
-        let query = supabaseClient.from('session_notes').select('id, client_reference, created_at, report_text, transcript_text').is('deleted_at', null).order('created_at', { ascending: false });
+        let query = supabaseClient.from('session_notes')
+          .select('id, client_reference, created_at, report_text, transcript_text')
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false });
+          
         if (searchQuery) { query = query.ilike('client_reference', `%${searchQuery}%`); }
         
         const { data, error } = await query;
@@ -614,14 +618,36 @@
         archiveList.innerHTML = '';
         if (data.length === 0) { archiveList.innerHTML = '<p style="text-align: center;">No active records found.</p>'; return; }
 
+        const now = new Date();
+
         data.forEach(record => {
-          const dateObj = new Date(record.created_at);
-          const dateString = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          const creationDate = new Date(record.created_at);
+          const dateString = creationDate.toLocaleDateString() + ' ' + creationDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          
+          // Calculate the 30-day countdown
+          const expirationDate = new Date(creationDate.getTime() + (30 * 24 * 60 * 60 * 1000));
+          const daysRemaining = Math.ceil((expirationDate - now) / (1000 * 60 * 60 * 24));
+          
+          // Dynamic styling for the countdown text
+          let countdownHtml = "";
+          if (daysRemaining > 5) {
+            countdownHtml = `<span style="font-size: 12px; color: #3a5a6b; background: rgba(58, 90, 107, 0.1); padding: 2px 8px; border-radius: 10px;">Expires in ${daysRemaining} days</span>`;
+          } else if (daysRemaining > 0) {
+            countdownHtml = `<span style="font-size: 12px; color: #ff9500; font-weight: 600; background: rgba(255, 149, 0, 0.1); padding: 2px 8px; border-radius: 10px;">Expires in ${daysRemaining} days</span>`;
+          } else {
+            countdownHtml = `<span style="font-size: 12px; color: #ff3b30; font-weight: 600; background: rgba(255, 59, 48, 0.1); padding: 2px 8px; border-radius: 10px;">Pending Auto-Deletion</span>`;
+          }
           
           const item = document.createElement('div');
           item.className = 'archive-item';
           item.innerHTML = `
-            <div class="archive-details"><strong>${record.client_reference}</strong><span>${dateString}</span></div>
+            <div class="archive-details">
+              <strong>${record.client_reference}</strong>
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                <span>${dateString}</span>
+                ${countdownHtml}
+              </div>
+            </div>
             <div class="archive-actions">
               <button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>
               <button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button>
