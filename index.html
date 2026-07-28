@@ -169,7 +169,7 @@
       <div class="metadata-grid">
         <select id="templateSelect" class="input-field">
           <option value="therapy">Art Therapy Report</option>
-          <option value="meeting">Executive Meeting Minutes</option>
+          <option value="meeting"> Meeting Minutes</option>
         </select>
         <input type="text" id="clientRefInput" class="input-field" placeholder="Client Initials / ID">
         <input type="text" id="locationInput" class="input-field" placeholder="Location (e.g., In-Clinic, Telehealth)">
@@ -259,7 +259,7 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
     
     // Set to your Edge Function URL
-    const WORKER_URL = 'https://awtyxmetipldytjmzayb.supabase.co/functions/v1/generate-notes';
+    const WORKER_URL = 'https://https://therapy-notes-backend-166874204931.us-central1.run.app';
     
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: window.sessionStorage } });
 
