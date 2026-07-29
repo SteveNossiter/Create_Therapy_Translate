@@ -73,7 +73,7 @@
     .timer.recording-active { color: var(--danger); }
     
     #loginScreen { max-width: 400px; margin: 80px auto; text-align: center; }
-    #loginScreen h2 { font-family: 'Momo Trust Display', cursive; font-size: 36px; color: #0e7e89; border-bottom: none; margin-bottom: 5px; }
+    #loginScreen h2 { font-family: 'Momo Trust Display', cursive; font-size: 38px; color: #0e7e89; border-bottom: none; margin-bottom: 5px; font-weight: 700; letter-spacing: 1px; }
     .password-wrapper { position: relative; width: 100%; margin-bottom: 20px; }
     .password-wrapper .input-field { margin-bottom: 0; padding-right: 60px; }
     .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; }
@@ -132,7 +132,7 @@
     <p class="subtitle" style="margin-bottom: 25px;">Secure Session Access</p>
     <input type="email" id="emailInput" class="input-field" placeholder="Email Address">
     <div class="password-wrapper">
-      <input type="password" id="passwordInput" class="input-field" placeholder="Password (Vault Key)">
+      <input type="password" id="passwordInput" class="input-field" placeholder="Password">
       <button type="button" id="togglePasswordBtn" class="toggle-password">Show</button>
     </div>
     <button id="loginBtn" class="ui-btn">Log In</button>
@@ -154,7 +154,7 @@
       </div>
 
       <h1>Create Therapy Notes</h1>
-      <p class="subtitle">Encrypted transcription & clinical reporting</p>
+      <p class="subtitle">Secure transcription & clinical reporting</p>
       
       <!-- Recovery Banner (Hidden by default) -->
       <div id="recoveryBanner" class="recovery-banner">
@@ -169,7 +169,7 @@
       <div class="metadata-grid">
         <select id="templateSelect" class="input-field">
           <option value="therapy">Art Therapy Report</option>
-          <option value="meeting"> Meeting Minutes</option>
+          <option value="meeting">Meeting Notes</option>
         </select>
         <input type="text" id="clientRefInput" class="input-field" placeholder="Client Initials / ID">
         <input type="text" id="locationInput" class="input-field" placeholder="Location (e.g., In-Clinic, Telehealth)">
@@ -218,7 +218,7 @@
     <div class="modal-content">
       <button id="closeArchiveBtn" class="modal-close">&times;</button>
       <h3>Session Archive</h3>
-      <p style="font-size: 14px; margin-bottom: 20px;">Your historical sessions, protected by end-to-end encryption.</p>
+      <p style="font-size: 14px; margin-bottom: 20px;">Your historical sessions, protected securely at rest.</p>
       
       <input type="text" id="searchArchiveInput" class="input-field" placeholder="Search Client Initials...">
       
@@ -244,8 +244,8 @@
       
       <h4>Security Architecture Update</h4>
       <ul>
-        <li><strong>Envelope Encryption (Key Wrapping):</strong> Notes are encrypted locally in your browser using a unique, random Data Encryption Key (DEK) for every single session. That DEK is then wrapped (encrypted) by your Vault Key. This prevents pre-computed attacks and ensures maximum cryptographic hygiene.</li>
-        <li><strong>Crash Recovery:</strong> Session audio is now silently cached to your device's IndexedDB while recording. If your browser crashes or reloads mid-session, your audio is preserved and can be recovered instantly upon reopening.</li>
+        <li><strong>Server-Side Encryption at Rest:</strong> Notes are encrypted securely inside Cloud Run prior to being stored in Supabase, preventing database exposure risks.</li>
+        <li><strong>Crash Recovery:</strong> Session audio is silently cached to your device's IndexedDB while recording. If your browser crashes or reloads mid-session, your audio is preserved.</li>
         <li><strong>Row Level Security (RLS):</strong> The database physically blocks access to any records that do not belong to your specific authenticated user token.</li>
       </ul>
     </div>
@@ -258,12 +258,12 @@
     const SUPABASE_URL = 'https://awtyxmetipldytjmzayb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
     
-    // Set to your Edge Function URL
-    const WORKER_URL = 'https://therapy-notes-backend-166874204931.us-central1.run.app';
+    // Cloud Run Function URL
+    const WORKER_URL = 'https://therapy-notes-background-166874204931.us-central1.run.app';
     
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: window.sessionStorage } });
 
-    let currentUserId = null; let currentTherapistName = "Therapist"; let currentUserPassword = ""; 
+    let currentUserId = null; let currentTherapistName = "Therapist";
 
     // ---------------------------------------------------------
     // UTILITIES: XSS SANITIZATION
@@ -332,81 +332,22 @@
     }
 
     // ---------------------------------------------------------
-    // ENVELOPE ENCRYPTION (Key Wrapping)
+    // SERVER-SIDE DECRYPTION HELPER VIA CLOUD RUN
     // ---------------------------------------------------------
-    async function encryptTextEnvelope(text, password) {
-      if (!text) return null;
-      
-      // 1. Generate unique Data Encryption Key (DEK)
-      const dek = await window.crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-      
-      // 2. Encrypt actual clinical text with DEK
-      const dataIv = window.crypto.getRandomValues(new Uint8Array(12));
-      const encodedText = new TextEncoder().encode(text);
-      const encryptedDataBuffer = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: dataIv }, dek, encodedText);
-      
-      // 3. Generate unique random salt and derive Key Encryption Key (KEK) from password
-      const salt = window.crypto.getRandomValues(new Uint8Array(16));
-      const enc = new TextEncoder();
-      const keyMaterial = await window.crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
-      const kek = await window.crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
-        keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt"]
-      );
-      
-      // 4. Wrap (Encrypt) the DEK with the KEK
-      const rawDek = await window.crypto.subtle.exportKey("raw", dek);
-      const kekIv = window.crypto.getRandomValues(new Uint8Array(12));
-      const encryptedDekBuffer = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: kekIv }, kek, rawDek);
-
-      // 5. Package Payload: salt.kekIv.encryptedDek.dataIv.encryptedData
-      const packageArr = [salt, kekIv, new Uint8Array(encryptedDekBuffer), dataIv, new Uint8Array(encryptedDataBuffer)];
-      return packageArr.map(arr => btoa(String.fromCharCode(...arr))).join('.');
-    }
-
-    async function decryptTextEnvelope(payload, password) {
-      if (!payload) return null;
-      
-      // Backward Compatibility: If old format (split by ':'), route to legacy decryptor
-      if (payload.includes(':') && !payload.includes('.')) { return legacyDecryptText(payload, password); }
-      if (!payload.includes('.')) return null;
-
+    async function decryptFromServer(encryptedPayload) {
+      if (!encryptedPayload) return "";
       try {
-        const parts = payload.split('.').map(b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
-        const [salt, kekIv, encryptedDek, dataIv, encryptedData] = parts;
-
-        const enc = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
-        const kek = await window.crypto.subtle.deriveKey(
-          { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
-          keyMaterial, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
-        );
-
-        const rawDekBuffer = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: kekIv }, kek, encryptedDek);
-        const dek = await window.crypto.subtle.importKey("raw", rawDekBuffer, { name: "AES-GCM" }, false, ["decrypt"]);
-
-        const decryptedDataBuffer = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: dataIv }, dek, encryptedData);
-        return new TextDecoder().decode(decryptedDataBuffer);
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'X-Action': 'decrypt', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload: encryptedPayload })
+        });
+        const data = await res.json();
+        return data.decryptedText || "[Decryption Error]";
       } catch (err) {
-        console.error("Envelope Decryption failed:", err);
-        return "[Decryption Error: Invalid Vault Key or Corrupt Record]";
+        console.error("Decryption request failed:", err);
+        return "[Decryption Error: Connection Failed]";
       }
-    }
-
-    async function legacyDecryptText(payload, password) {
-      try {
-        const [ivB64, encB64] = payload.split(':');
-        const enc = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
-        const key = await window.crypto.subtle.deriveKey(
-          { name: "PBKDF2", salt: enc.encode("clinical_vault_salt"), iterations: 100000, hash: "SHA-256" },
-          keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
-        );
-        const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
-        const encData = Uint8Array.from(atob(encB64), c => c.charCodeAt(0));
-        const decryptedBuffer = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, encData);
-        return new TextDecoder().decode(decryptedBuffer);
-      } catch (err) { return "[Legacy Decryption Error]"; }
     }
 
     // ---------------------------------------------------------
@@ -437,7 +378,7 @@
 
     async function performLogout() {
       await supabaseClient.auth.signOut();
-      sessionStorage.removeItem('vaultKey'); sessionStorage.removeItem('loginTimestamp');
+      sessionStorage.removeItem('loginTimestamp');
       window.location.reload();
     }
 
@@ -446,13 +387,11 @@
     async function checkSession() {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
-        const loginTime = sessionStorage.getItem('loginTimestamp'); const vaultKey = sessionStorage.getItem('vaultKey');
+        const loginTime = sessionStorage.getItem('loginTimestamp');
         if (loginTime && (Date.now() - parseInt(loginTime)) > 43200000) { await performLogout(); return; }
-        if (!vaultKey) { await performLogout(); return; }
 
         currentUserId = session.user.id;
         currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
-        currentUserPassword = vaultKey;
         
         loginScreen.style.display = 'none'; mainApp.style.display = 'block';
         startSessionTimer(loginTime); checkRecovery();
@@ -466,10 +405,9 @@
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value.trim(), password: passwordInput.value });
         if (error) throw error;
         if (data.session) {
-          sessionStorage.setItem('vaultKey', passwordInput.value); sessionStorage.setItem('loginTimestamp', Date.now().toString());
+          sessionStorage.setItem('loginTimestamp', Date.now().toString());
           currentUserId = data.session.user.id;
-          currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email;
-          currentUserPassword = passwordInput.value; 
+          currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email; 
           loginScreen.style.display = 'none'; mainApp.style.display = 'block';
           startSessionTimer(Date.now()); checkRecovery();
         }
@@ -479,7 +417,7 @@
     document.getElementById('logoutBtn').addEventListener('click', performLogout);
 
     document.getElementById('resetBtn').addEventListener('click', () => {
-      if (!confirm("Clear the screen for your next session? The current notes have been safely encrypted and can be retrieved from your Archive anytime.")) return;
+      if (!confirm("Clear the screen for your next session? The current notes have been securely saved and can be retrieved from your Archive anytime.")) return;
       
       document.getElementById('windowsContainer').classList.remove('active');
       document.getElementById('transcriptContent').innerHTML = "Awaiting data...";
@@ -516,7 +454,7 @@
     // ---------------------------------------------------------
     let mediaRecorder; let audioChunks = []; let recordedAudioBlob = null;
     let mimeType = ''; let timerInterval; let secondsElapsed = 0;
-    let wakeLock = null; let sessionStartTimeDate = null; let sessionStopTimeDate = null;
+    let wakeLock = null;
 
     async function requestWakeLock() { try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {} }
     function releaseWakeLock() { if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); } }
@@ -531,7 +469,7 @@
 
     recordBtn.addEventListener('click', async () => {
       try {
-        await clearAudioDB(); // Wipe old session if any
+        await clearAudioDB();
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 16000 });
         audioChunks = [];
@@ -539,7 +477,7 @@
         mediaRecorder.ondataavailable = e => { 
           if (e.data.size > 0) { 
             audioChunks.push(e.data); 
-            saveChunkToDB(e.data); // Stream to IndexedDB backup
+            saveChunkToDB(e.data);
           } 
         };
         
@@ -551,7 +489,7 @@
           processBtn.disabled = false;
         };
 
-        sessionStartTimeDate = new Date(); mediaRecorder.start(1000); secondsElapsed = 0;
+        mediaRecorder.start(1000); secondsElapsed = 0;
         timerInterval = setInterval(() => { secondsElapsed++; timerDisplay.innerText = formatTime(secondsElapsed); }, 1000);
         await requestWakeLock();
 
@@ -565,113 +503,93 @@
 
     stopBtn.addEventListener('click', () => {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); }
-      sessionStopTimeDate = new Date();
       recordBtn.disabled = false; stopBtn.disabled = true;
       timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
     });
 
-  processBtn.addEventListener('click', async () => {
-    if (!recordedAudioBlob) return;
-    await requestWakeLock();
-  
-    const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Client";
-    statusPanel.className = 'status-panel panel-processing';
-    processBtn.disabled = true;
-    document.getElementById('windowsContainer').classList.add('active');
+    processBtn.addEventListener('click', async () => {
+      if (!recordedAudioBlob) return;
+      await requestWakeLock();
     
-    const transcriptContent = document.getElementById('transcriptContent');
-    const reportContent = document.getElementById('reportContent');
-  
-    try {
-      // 1. Get Secure Upload Ticket (Using your HTTP Cloud Function)
-      statusText.innerText = "Negotiating secure upload ticket...";
-      const ticketRes = await fetch(WORKER_URL, { 
-        method: 'POST', 
-        headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ mimeType: mimeType })
-      });
-      const ticketData = await ticketRes.json();
-  
-      // 2. Create "Pending" row in Database
-      statusText.innerText = "Registering session in database...";
+      const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Client";
+      statusPanel.className = 'status-panel panel-processing';
+      processBtn.disabled = true;
+      document.getElementById('windowsContainer').classList.add('active');
       
-      // Force the fileName to be a string
-      const targetFileName = String(ticketData.fileName); 
-      
-      const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
-        .insert({
-          therapist_id: currentUserId,
-          client_reference: clientRef,
-          file_id: targetFileName, // explicitly passing the string
-          status: 'pending'
-        }).select().single();
+      const transcriptContent = document.getElementById('transcriptContent');
+      const reportContent = document.getElementById('reportContent');
+    
+      try {
+        statusText.innerText = "Negotiating secure upload ticket...";
+        const ticketRes = await fetch(WORKER_URL, { 
+          method: 'POST', 
+          headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ mimeType: mimeType })
+        });
+        const ticketData = await ticketRes.json();
+    
+        statusText.innerText = "Registering session in database...";
+        const targetFileName = String(ticketData.fileName); 
         
-      if (insertError) throw insertError;
-      const currentRecordId = newRecord.id;
-  
-      // 3. Upload Audio Directly to Google Cloud Storage
-      statusText.innerText = "Uploading secure audio (Do not close tab yet)...";
-      await fetch(ticketData.uploadUrl, { 
-        method: 'PUT', 
-        headers: { 'Content-Type': mimeType }, 
-        body: recordedAudioBlob 
-      });
-  
-      // 4. Activate Supabase Realtime Listener
-      statusText.innerText = "Upload complete. AI processing in the cloud. You may safely lock your device.";
-      transcriptContent.innerHTML = "<p>Listening for cloud completion signal...</p>";
-      reportContent.innerHTML = "<p>Processing heavy compute load...</p>";
-  
-      const channel = supabaseClient.channel(`session-${currentRecordId}`)
-        .on('postgres_changes', { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'session_notes', 
-          filter: `id=eq.${currentRecordId}` 
-        }, async (payload) => {
+        const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
+          .insert({
+            therapist_id: currentUserId,
+            client_reference: clientRef,
+            file_id: targetFileName,
+            status: 'pending'
+          }).select().single();
           
-          if (payload.new.status === 'completed') {
-            statusText.innerText = "Signal received. Encrypting notes locally...";
-            const rawText = payload.new.temp_raw_text;
+        if (insertError) throw insertError;
+        const currentRecordId = newRecord.id;
+    
+        statusText.innerText = "Uploading secure audio (Do not close tab yet)...";
+        await fetch(ticketData.uploadUrl, { 
+          method: 'PUT', 
+          headers: { 'Content-Type': mimeType }, 
+          body: recordedAudioBlob 
+        });
+    
+        statusText.innerText = "Upload complete. AI processing in the cloud. You may safely lock your device.";
+        transcriptContent.innerHTML = "<p>Listening for cloud completion signal...</p>";
+        reportContent.innerHTML = "<p>Processing heavy compute load...</p>";
+    
+        const channel = supabaseClient.channel(`session-${currentRecordId}`)
+          .on('postgres_changes', { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'session_notes', 
+            filter: `id=eq.${currentRecordId}` 
+          }, async (payload) => {
             
-            let sections = rawText.split('|||');
-            if (sections.length < 2) sections = [rawText, "Delimiter missing."];
-            
-            const finalTranscriptHtml = marked.parse(sections[0].trim());
-            const finalReportHtml = marked.parse(sections[1].trim());
-  
-            transcriptContent.innerHTML = finalTranscriptHtml;
-            reportContent.innerHTML = finalReportHtml;
-  
-            // 5. Execute Encryption Handoff & Delete Raw Text
-            const encryptedReport = await encryptTextEnvelope(finalReportHtml, currentUserPassword);
-            const encryptedTranscript = await encryptTextEnvelope(finalTranscriptHtml, currentUserPassword);
-  
-            await supabaseClient.from('session_notes').update({
-              report_text: encryptedReport,
-              transcript_text: encryptedTranscript,
-              temp_raw_text: null // Wipe the raw text permanently
-            }).eq('id', currentRecordId);
-  
-            statusText.innerText = "Session complete. Notes safely encrypted and saved.";
-            statusPanel.className = 'status-panel panel-stopped';
-            clearAudioDB();
-            releaseWakeLock();
-            supabaseClient.removeChannel(channel);
-          } else if (payload.new.status === 'failed') {
-            throw new Error("Cloud processing failed.");
-          }
-        })
-        .subscribe();
-  
-    } catch (err) {
-      reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
-      statusText.innerText = "System Error."; 
-      statusPanel.className = 'status-panel';
-      processBtn.disabled = false;
-      releaseWakeLock();
-    }
-  });
+            if (payload.new.status === 'completed') {
+              statusText.innerText = "Signal received. Rendering notes...";
+              
+              // Decrypt server-side encrypted contents on the fly for viewing
+              const rawReport = await decryptFromServer(payload.new.report_text);
+              const rawTranscript = await decryptFromServer(payload.new.transcript_text);
+
+              transcriptContent.innerHTML = marked.parse(rawTranscript);
+              reportContent.innerHTML = marked.parse(rawReport);
+
+              statusText.innerText = "Session complete. Notes safely encrypted and saved.";
+              statusPanel.className = 'status-panel panel-stopped';
+              clearAudioDB();
+              releaseWakeLock();
+              supabaseClient.removeChannel(channel);
+            } else if (payload.new.status === 'failed') {
+              throw new Error("Cloud processing failed.");
+            }
+          })
+          .subscribe();
+    
+      } catch (err) {
+        reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
+        statusText.innerText = "System Error."; 
+        statusPanel.className = 'status-panel';
+        processBtn.disabled = false;
+        releaseWakeLock();
+      }
+    });
 
     // ---------------------------------------------------------
     // ARCHIVE DASHBOARD & SOFT DELETION
@@ -684,9 +602,8 @@
     document.getElementById('closeArchiveBtn').addEventListener('click', () => archiveModal.classList.remove('active'));
 
     async function fetchArchive(searchQuery = "") {
-      archiveList.innerHTML = '<p style="text-align: center;">Decrypting vault records...</p>';
+      archiveList.innerHTML = '<p style="text-align: center;">Loading secure records...</p>';
       try {
-        // Sanitize the search query just in case
         const safeQuery = escapeHTML(searchQuery);
         let query = supabaseClient.from('session_notes')
           .select('id, client_reference, created_at, report_text, transcript_text')
@@ -712,7 +629,6 @@
           else if (daysRemaining > 0) countdownHtml = `<span style="font-size: 12px; color: #ff9500; font-weight: 600; background: rgba(255, 149, 0, 0.1); padding: 2px 8px; border-radius: 10px;">Expires in ${daysRemaining} days</span>`;
           else countdownHtml = `<span style="font-size: 12px; color: #ff3b30; font-weight: 600; background: rgba(255, 59, 48, 0.1); padding: 2px 8px; border-radius: 10px;">Pending Auto-Deletion</span>`;
           
-          // Safe injection using escaped variables
           const safeClientRef = escapeHTML(record.client_reference);
           
           const item = document.createElement('div');
@@ -725,7 +641,7 @@
               </div>
             </div>
             <div class="archive-actions">
-              <button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>
+              <button class="btn-small btn-view" onclick="loadArchivedRecord('${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>
               <button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button>
             </div>
           `;
@@ -736,12 +652,17 @@
 
     searchArchiveInput.addEventListener('input', (e) => fetchArchive(e.target.value.trim()));
 
-    window.loadArchivedRecord = async function(id, encodedReport, encodedTranscript) {
+    window.loadArchivedRecord = async function(encodedReport, encodedTranscript) {
       archiveModal.classList.remove('active'); document.getElementById('windowsContainer').classList.add('active');
-      const reportHtml = await decryptTextEnvelope(atob(encodedReport), currentUserPassword);
-      const transcriptHtml = await decryptTextEnvelope(atob(encodedTranscript), currentUserPassword);
-      document.getElementById('reportContent').innerHTML = reportHtml;
-      document.getElementById('transcriptContent').innerHTML = transcriptHtml;
+      
+      const cipherReport = atob(encodedReport);
+      const cipherTranscript = atob(encodedTranscript);
+
+      const rawReport = await decryptFromServer(cipherReport);
+      const rawTranscript = await decryptFromServer(cipherTranscript);
+
+      document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
+      document.getElementById('transcriptContent').innerHTML = marked.parse(rawTranscript);
       document.getElementById('status').innerText = "Loaded record from archive.";
     };
 
@@ -759,10 +680,6 @@
     // ---------------------------------------------------------
     async function copyContent(elementId, btnElement) {
       const contentBox = document.getElementById(elementId);
-      if (elementId === 'consentText') {
-        try { await navigator.clipboard.writeText(contentBox.innerText); const orig = btnElement.innerText; btnElement.innerText = "Copied!"; setTimeout(() => btnElement.innerText = orig, 2000); } catch (err) { alert("Failed to copy text."); }
-        return;
-      }
       try {
         const clipboardItem = new ClipboardItem({ "text/plain": new Blob([contentBox.innerText], { type: "text/plain" }), "text/html": new Blob([contentBox.innerHTML], { type: "text/html" }) });
         await navigator.clipboard.write([clipboardItem]);
