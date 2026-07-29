@@ -594,11 +594,15 @@
   
       // 2. Create "Pending" row in Database
       statusText.innerText = "Registering session in database...";
+      
+      // Force the fileName to be a string
+      const targetFileName = String(ticketData.fileName); 
+      
       const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
         .insert({
           therapist_id: currentUserId,
           client_reference: clientRef,
-          file_id: ticketData.fileName,
+          file_id: targetFileName, // explicitly passing the string
           status: 'pending'
         }).select().single();
         
