@@ -265,7 +265,7 @@
 
     let currentUserId = null; 
     let currentTherapistName = "Therapist";
-    let activeSessionRecordId = null; // Tracks the currently displayed record ID
+    let activeSessionRecordId = null;
 
     // ---------------------------------------------------------
     // UTILITIES: XSS SANITIZATION
@@ -429,7 +429,7 @@
       document.getElementById('attendeesInput').value = "";
       
       recordedAudioBlob = null; audioChunks = []; clearAudioDB();
-      activeSessionRecordId = null; // Clear the active tracker
+      activeSessionRecordId = null; 
 
       document.getElementById('status').innerText = "Ready to record.";
       document.getElementById('timer').innerText = "00:00:00";
@@ -513,12 +513,10 @@
       timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
     });
 
-    // Helper function to extract and render finalized text
     async function renderFinalNotes(recordId, channelToClean) {
       statusText.innerText = "Finalizing secure notes...";
       
       try {
-        // Fetch full row explicitly to bypass TOAST/payload truncation limits in realtime
         const { data: fullRecord, error } = await supabaseClient
           .from('session_notes')
           .select('report_text, transcript_text')
@@ -539,8 +537,6 @@
         statusText.innerText = "Session complete. Notes safely encrypted and saved.";
         statusPanel.className = 'status-panel panel-stopped';
         
-        // Clean up audio backup now that it is safely processed
-        clearAudioDB();
         releaseWakeLock();
         if (channelToClean) {
             supabaseClient.removeChannel(channelToClean);
@@ -561,9 +557,10 @@
       
       const transcriptContent = document.getElementById('transcriptContent');
       const reportContent = document.getElementById('reportContent');
+      let currentUiStatus = 'pending';
     
       try {
-        statusText.innerText = "Negotiating secure upload ticket...";
+        statusText.innerText = "Encrypting and establishing secure link...";
         const ticketRes = await fetch(WORKER_URL, { 
           method: 'POST', 
           headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
@@ -571,7 +568,6 @@
         });
         const ticketData = await ticketRes.json();
     
-        statusText.innerText = "Registering session in database...";
         const targetFileName = String(ticketData.fileName); 
         
         const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
@@ -583,22 +579,23 @@
           }).select().single();
           
         if (insertError) throw insertError;
-        
         activeSessionRecordId = newRecord.id;
     
-        statusText.innerText = "Uploading secure audio (Do not close tab yet)...";
+        statusText.innerText = "Uploading audio vault chunk (Do not close tab yet)...";
         await fetch(ticketData.uploadUrl, { 
           method: 'PUT', 
           headers: { 'Content-Type': mimeType }, 
           body: recordedAudioBlob 
         });
+
+        // 1. CLEAR CRASH CACHE IMMEDIATELY AFTER CLOUD HAND-OFF
+        clearAudioDB(); 
     
-        // Friendlier wait text
-        statusText.innerText = "Upload complete. Your notes are quietly brewing in the background.";
-        transcriptContent.innerHTML = "<p style='color: #666;'><em>Analyzing your session... This usually takes 1 to 3 minutes. Your notes will appear here automatically once ready.</em></p>";
-        reportContent.innerHTML = "<p style='color: #666;'><em>Drafting clinical insights... This usually takes 1 to 3 minutes. Feel free to leave this window open.</em></p>";
+        statusText.innerText = "Upload complete. Secure processing initiated.";
+        transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Queuing secure transcription...</em></p>";
+        reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Waiting for transcript completion...</em></p>";
     
-        // 1. Primary Listener (Realtime)
+        // 2. REALTIME LISTENER
         const channel = supabaseClient.channel(`session-${activeSessionRecordId}`)
           .on('postgres_changes', { 
             event: 'UPDATE', 
@@ -606,9 +603,23 @@
             table: 'session_notes', 
             filter: `id=eq.${activeSessionRecordId}` 
           }, async (payload) => {
-            if (payload.new.status === 'completed') {
+            const newStatus = payload.new.status;
+            
+            if (newStatus === 'transcribing') {
+              currentUiStatus = 'transcribing';
+              statusText.innerText = "Transcribing audio securely...";
+              transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating high-fidelity transcript... (Usually takes ~30 seconds for long sessions).</em></p>";
+            } 
+            else if (newStatus === 'analyzing') {
+              currentUiStatus = 'analyzing';
+              statusText.innerText = "Transcript complete. AI is drafting clinical insights...";
+              transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Transcript generated. Finalizing...</em></p>";
+              reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical report... (Takes about 10-15 seconds).</em></p>";
+            }
+            else if (newStatus === 'completed') {
               await renderFinalNotes(activeSessionRecordId, channel);
-            } else if (payload.new.status === 'failed') {
+            } 
+            else if (newStatus === 'failed') {
               reportContent.innerHTML = `<p style="color: red;">Cloud processing failed.</p>`;
               statusText.innerText = "System Error."; 
               statusPanel.className = 'status-panel';
@@ -618,36 +629,49 @@
             }
           })
           .subscribe();
-
-        // 2. Backup Polling (In case Realtime disconnects or is blocked)
+          
+        // 3. BACKUP POLLING (15 SECONDS)
         const pollInterval = setInterval(async () => {
-           // Stop polling if UI status changed from processing
            if (statusPanel.className !== 'status-panel panel-processing') {
               clearInterval(pollInterval);
               return;
            }
            
-           const { data: checkData } = await supabaseClient
-            .from('session_notes')
-            .select('status')
-            .eq('id', activeSessionRecordId)
-            .single();
-            
-           if (checkData && checkData.status === 'completed') {
-              clearInterval(pollInterval);
-              if (statusText.innerText.includes("brewing")) { // If realtime missed it
-                  await renderFinalNotes(activeSessionRecordId, channel);
-              }
-           } else if (checkData && checkData.status === 'failed') {
-              clearInterval(pollInterval);
-              reportContent.innerHTML = `<p style="color: red;">Cloud processing failed.</p>`;
-              statusText.innerText = "System Error."; 
-              statusPanel.className = 'status-panel';
-              processBtn.disabled = false;
-              releaseWakeLock();
-              supabaseClient.removeChannel(channel);
+           try {
+               const { data: checkData } = await supabaseClient
+                .from('session_notes')
+                .select('status')
+                .eq('id', activeSessionRecordId)
+                .single();
+                
+               if (checkData) {
+                   if (checkData.status === 'transcribing' && currentUiStatus !== 'transcribing') {
+                       currentUiStatus = 'transcribing';
+                       statusText.innerText = "Transcribing audio securely...";
+                       transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating high-fidelity transcript... (Usually takes ~30 seconds for long sessions).</em></p>";
+                   } else if (checkData.status === 'analyzing' && currentUiStatus !== 'analyzing') {
+                       currentUiStatus = 'analyzing';
+                       statusText.innerText = "Transcript complete. AI is drafting clinical insights...";
+                       transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Transcript generated. Finalizing...</em></p>";
+                       reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical report... (Takes about 10-15 seconds).</em></p>";
+                   } else if (checkData.status === 'completed') {
+                       clearInterval(pollInterval);
+                       await renderFinalNotes(activeSessionRecordId, channel);
+                   } else if (checkData.status === 'failed') {
+                       clearInterval(pollInterval);
+                       throw new Error("Cloud processing failed.");
+                   }
+               }
+           } catch (err) {
+               clearInterval(pollInterval);
+               reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
+               statusText.innerText = "System Error."; 
+               statusPanel.className = 'status-panel';
+               processBtn.disabled = false;
+               releaseWakeLock();
+               supabaseClient.removeChannel(channel);
            }
-        }, 15000); // Check every 15 seconds
+        }, 15000);
     
       } catch (err) {
         reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
@@ -720,7 +744,7 @@
     searchArchiveInput.addEventListener('input', (e) => fetchArchive(e.target.value.trim()));
 
     window.loadArchivedRecord = async function(id, encodedReport, encodedTranscript) {
-      activeSessionRecordId = id; // Track what is actively visible on the main page
+      activeSessionRecordId = id; 
       archiveModal.classList.remove('active'); 
       document.getElementById('windowsContainer').classList.add('active');
       
@@ -741,7 +765,7 @@
         const { error } = await supabaseClient.from('session_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
         
-        // If the user deleted the record they are currently viewing, clear the workspace
+        // Auto-clear workspace if deleting the active record
         if (activeSessionRecordId === id) {
             document.getElementById('resetBtn').click();
         }
