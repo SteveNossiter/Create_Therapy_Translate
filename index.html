@@ -263,7 +263,9 @@
     
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: window.sessionStorage } });
 
-    let currentUserId = null; let currentTherapistName = "Therapist";
+    let currentUserId = null; 
+    let currentTherapistName = "Therapist";
+    let activeSessionRecordId = null; // Tracks the currently displayed record ID
 
     // ---------------------------------------------------------
     // UTILITIES: XSS SANITIZATION
@@ -427,6 +429,8 @@
       document.getElementById('attendeesInput').value = "";
       
       recordedAudioBlob = null; audioChunks = []; clearAudioDB();
+      activeSessionRecordId = null; // Clear the active tracker
+
       document.getElementById('status').innerText = "Ready to record.";
       document.getElementById('timer').innerText = "00:00:00";
       document.getElementById('statusPanel').className = 'status-panel';
@@ -470,6 +474,8 @@
     recordBtn.addEventListener('click', async () => {
       try {
         await clearAudioDB();
+        activeSessionRecordId = null;
+        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 16000 });
         audioChunks = [];
@@ -507,6 +513,43 @@
       timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
     });
 
+    // Helper function to extract and render finalized text
+    async function renderFinalNotes(recordId, channelToClean) {
+      statusText.innerText = "Finalizing secure notes...";
+      
+      try {
+        // Fetch full row explicitly to bypass TOAST/payload truncation limits in realtime
+        const { data: fullRecord, error } = await supabaseClient
+          .from('session_notes')
+          .select('report_text, transcript_text')
+          .eq('id', recordId)
+          .single();
+          
+        if (error || !fullRecord) {
+           statusText.innerText = "Error pulling finalized text. Please check the Archive.";
+           return;
+        }
+
+        const rawReport = await decryptFromServer(fullRecord.report_text);
+        const rawTranscript = await decryptFromServer(fullRecord.transcript_text);
+
+        document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
+        document.getElementById('transcriptContent').innerHTML = marked.parse(rawTranscript);
+
+        statusText.innerText = "Session complete. Notes safely encrypted and saved.";
+        statusPanel.className = 'status-panel panel-stopped';
+        
+        // Clean up audio backup now that it is safely processed
+        clearAudioDB();
+        releaseWakeLock();
+        if (channelToClean) {
+            supabaseClient.removeChannel(channelToClean);
+        }
+      } catch (err) {
+        console.error("Render error:", err);
+      }
+    }
+
     processBtn.addEventListener('click', async () => {
       if (!recordedAudioBlob) return;
       await requestWakeLock();
@@ -540,7 +583,8 @@
           }).select().single();
           
         if (insertError) throw insertError;
-        const currentRecordId = newRecord.id;
+        
+        activeSessionRecordId = newRecord.id;
     
         statusText.innerText = "Uploading secure audio (Do not close tab yet)...";
         await fetch(ticketData.uploadUrl, { 
@@ -549,38 +593,61 @@
           body: recordedAudioBlob 
         });
     
-        statusText.innerText = "Upload complete. AI processing in the cloud. You may safely lock your device.";
-        transcriptContent.innerHTML = "<p>Listening for cloud completion signal...</p>";
-        reportContent.innerHTML = "<p>Processing heavy compute load...</p>";
+        // Friendlier wait text
+        statusText.innerText = "Upload complete. Your notes are quietly brewing in the background.";
+        transcriptContent.innerHTML = "<p style='color: #666;'><em>Analyzing your session... This usually takes 1 to 3 minutes. Your notes will appear here automatically once ready.</em></p>";
+        reportContent.innerHTML = "<p style='color: #666;'><em>Drafting clinical insights... This usually takes 1 to 3 minutes. Feel free to leave this window open.</em></p>";
     
-        const channel = supabaseClient.channel(`session-${currentRecordId}`)
+        // 1. Primary Listener (Realtime)
+        const channel = supabaseClient.channel(`session-${activeSessionRecordId}`)
           .on('postgres_changes', { 
             event: 'UPDATE', 
             schema: 'public', 
             table: 'session_notes', 
-            filter: `id=eq.${currentRecordId}` 
+            filter: `id=eq.${activeSessionRecordId}` 
           }, async (payload) => {
-            
             if (payload.new.status === 'completed') {
-              statusText.innerText = "Signal received. Rendering notes...";
-              
-              // Decrypt server-side encrypted contents on the fly for viewing
-              const rawReport = await decryptFromServer(payload.new.report_text);
-              const rawTranscript = await decryptFromServer(payload.new.transcript_text);
-
-              transcriptContent.innerHTML = marked.parse(rawTranscript);
-              reportContent.innerHTML = marked.parse(rawReport);
-
-              statusText.innerText = "Session complete. Notes safely encrypted and saved.";
-              statusPanel.className = 'status-panel panel-stopped';
-              clearAudioDB();
+              await renderFinalNotes(activeSessionRecordId, channel);
+            } else if (payload.new.status === 'failed') {
+              reportContent.innerHTML = `<p style="color: red;">Cloud processing failed.</p>`;
+              statusText.innerText = "System Error."; 
+              statusPanel.className = 'status-panel';
+              processBtn.disabled = false;
               releaseWakeLock();
               supabaseClient.removeChannel(channel);
-            } else if (payload.new.status === 'failed') {
-              throw new Error("Cloud processing failed.");
             }
           })
           .subscribe();
+
+        // 2. Backup Polling (In case Realtime disconnects or is blocked)
+        const pollInterval = setInterval(async () => {
+           // Stop polling if UI status changed from processing
+           if (statusPanel.className !== 'status-panel panel-processing') {
+              clearInterval(pollInterval);
+              return;
+           }
+           
+           const { data: checkData } = await supabaseClient
+            .from('session_notes')
+            .select('status')
+            .eq('id', activeSessionRecordId)
+            .single();
+            
+           if (checkData && checkData.status === 'completed') {
+              clearInterval(pollInterval);
+              if (statusText.innerText.includes("brewing")) { // If realtime missed it
+                  await renderFinalNotes(activeSessionRecordId, channel);
+              }
+           } else if (checkData && checkData.status === 'failed') {
+              clearInterval(pollInterval);
+              reportContent.innerHTML = `<p style="color: red;">Cloud processing failed.</p>`;
+              statusText.innerText = "System Error."; 
+              statusPanel.className = 'status-panel';
+              processBtn.disabled = false;
+              releaseWakeLock();
+              supabaseClient.removeChannel(channel);
+           }
+        }, 15000); // Check every 15 seconds
     
       } catch (err) {
         reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
@@ -641,7 +708,7 @@
               </div>
             </div>
             <div class="archive-actions">
-              <button class="btn-small btn-view" onclick="loadArchivedRecord('${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>
+              <button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>
               <button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button>
             </div>
           `;
@@ -652,8 +719,10 @@
 
     searchArchiveInput.addEventListener('input', (e) => fetchArchive(e.target.value.trim()));
 
-    window.loadArchivedRecord = async function(encodedReport, encodedTranscript) {
-      archiveModal.classList.remove('active'); document.getElementById('windowsContainer').classList.add('active');
+    window.loadArchivedRecord = async function(id, encodedReport, encodedTranscript) {
+      activeSessionRecordId = id; // Track what is actively visible on the main page
+      archiveModal.classList.remove('active'); 
+      document.getElementById('windowsContainer').classList.add('active');
       
       const cipherReport = atob(encodedReport);
       const cipherTranscript = atob(encodedTranscript);
@@ -671,6 +740,12 @@
       try {
         const { error } = await supabaseClient.from('session_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
+        
+        // If the user deleted the record they are currently viewing, clear the workspace
+        if (activeSessionRecordId === id) {
+            document.getElementById('resetBtn').click();
+        }
+        
         fetchArchive(searchArchiveInput.value.trim()); 
       } catch (err) { alert("Failed to delete record: " + err.message); }
     };
