@@ -570,112 +570,104 @@
       timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
     });
 
-    processBtn.addEventListener('click', async () => {
-      if (!recordedAudioBlob) return;
-      await requestWakeLock();
-
-      // Apply strict XSS Sanitization to user inputs
-      const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Client";
-      const locationVal = escapeHTML(document.getElementById('locationInput').value.trim()) || "Standard";
-      const attendeesVal = escapeHTML(document.getElementById('attendeesInput').value.trim()) || "None specified";
-      const selectedTemplate = document.getElementById('templateSelect').value;
-
-      statusPanel.className = 'status-panel panel-processing';
-      processBtn.disabled = true;
-      document.getElementById('windowsContainer').classList.add('active');
-      
-      const transcriptContent = document.getElementById('transcriptContent');
-      const reportContent = document.getElementById('reportContent');
-      transcriptContent.innerHTML = "<p>Processing...</p>";
-      reportContent.innerHTML = "<p>Generating clinical report securely...</p>";
-
-      const currentDate = sessionStartTimeDate ? sessionStartTimeDate.toLocaleDateString('en-AU') : new Date().toLocaleDateString('en-AU');
-      const startTimeStr = sessionStartTimeDate ? sessionStartTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
-      const stopTimeStr = sessionStopTimeDate ? sessionStopTimeDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : "";
-
-      try {
-        // STEP 1: Get Secure Upload Ticket
-        statusText.innerText = "Step 1/3: Negotiating secure upload ticket...";
+  processBtn.addEventListener('click', async () => {
+    if (!recordedAudioBlob) return;
+    await requestWakeLock();
+  
+    const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Client";
+    statusPanel.className = 'status-panel panel-processing';
+    processBtn.disabled = true;
+    document.getElementById('windowsContainer').classList.add('active');
+    
+    const transcriptContent = document.getElementById('transcriptContent');
+    const reportContent = document.getElementById('reportContent');
+  
+    try {
+      // 1. Get Secure Upload Ticket (Using your HTTP Cloud Function)
+      statusText.innerText = "Negotiating secure upload ticket...";
+      const ticketRes = await fetch(WORKER_URL, { 
+        method: 'POST', 
+        headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ mimeType: mimeType })
+      });
+      const ticketData = await ticketRes.json();
+  
+      // 2. Create "Pending" row in Database
+      statusText.innerText = "Registering session in database...";
+      const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
+        .insert({
+          therapist_id: currentUserId,
+          client_reference: clientRef,
+          file_id: ticketData.fileName,
+          status: 'pending'
+        }).select().single();
         
-        const ticketRes = await fetch(WORKER_URL, { 
-          method: 'POST', headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ mimeType: mimeType })
-        });
-        if (!ticketRes.ok) throw new Error("Failed to authenticate secure tunnel.");
-        const ticketData = await ticketRes.json();
-
-        // STEP 2: Direct Browser-to-Cloud Upload
-        statusText.innerText = "Step 2/3: Uploading session securely (Takes 20-60s)...";
-        
-        const uploadRes = await fetch(ticketData.uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': mimeType },
-          body: recordedAudioBlob
-        });
-        if (!uploadRes.ok) throw new Error("Cloud upload failed. Check connection.");
-
-        // STEP 3: Vertex AI Analysis
-        statusText.innerText = "Step 3/3: AI analyzing session (Takes ~30-60s)...";
-
-        const generatePayload = {
-          gsUri: ticketData.gsUri, fileName: ticketData.fileName, mimeType: mimeType, 
-          isMeetingMode: selectedTemplate === 'meeting', currentDate: currentDate, 
-          startTimeStr: startTimeStr, stopTimeStr: stopTimeStr, currentTherapistName: currentTherapistName, 
-          locationVal: locationVal, attendeesVal: attendeesVal, clientRef: clientRef
-        };
-
-        const generateRes = await fetch(WORKER_URL, { 
-          method: 'POST', headers: { 'X-Action': 'generate', 'Content-Type': 'application/json' },
-          body: JSON.stringify(generatePayload) 
-        });
-
-        if (!generateRes.ok) {
-          const rawError = await generateRes.text();
-          throw new Error(`Analysis Failed: ${rawError.substring(0, 100)}...`);
-        }
-
-        const data = await generateRes.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        let sections = rawText.split('|||');
-        
-        if (sections.length < 2) {
-          const fallbackSplit = rawText.split(/(?:\n|^)(?=### Session Details|### Meeting Details)/i);
-          if (fallbackSplit.length >= 2) sections = [fallbackSplit[0], fallbackSplit.slice(1).join('\n')];
-        }
-        
-        let finalTranscriptHtml = ""; let finalReportHtml = "";
-
-        if (sections.length >= 2) {
-          finalTranscriptHtml = marked.parse(sections[0].trim());
-          finalReportHtml = marked.parse(sections[1].trim());
-        } else {
-          finalTranscriptHtml = marked.parse("Delimiter missing:\n\n" + rawText);
-          finalReportHtml = "<p>See Transcript window.</p>";
-        }
-
-        transcriptContent.innerHTML = finalTranscriptHtml;
-        reportContent.innerHTML = finalReportHtml;
-        statusText.innerText = "Success. Saving encrypted record to vault...";
-
-        // STEP 4: Local Browser Envelope Encryption & Save
-        const encryptedReport = await encryptTextEnvelope(finalReportHtml, currentUserPassword);
-        const encryptedTranscript = await encryptTextEnvelope(finalTranscriptHtml, currentUserPassword);
-
-        const { error: dbError } = await supabaseClient.from('session_notes').insert({
-          therapist_id: currentUserId, client_reference: clientRef,
-          report_text: encryptedReport, transcript_text: encryptedTranscript
-        });
-
-        if (dbError) throw new Error("Document generated, but failed to save to vault: " + dbError.message);
-
-        statusText.innerText = "Record securely encrypted and saved.";
-        statusPanel.className = 'status-panel panel-stopped';
-        clearAudioDB(); // Wipe IndexedDB backup on success
-      } catch (err) {
-        reportContent.innerHTML = `<p style="color: red; font-weight: bold;">${err.message}</p>`;
-        statusText.innerText = "Processing failed."; statusPanel.className = 'status-panel';
-      } finally { processBtn.disabled = false; releaseWakeLock(); }
-    });
+      if (insertError) throw insertError;
+      const currentRecordId = newRecord.id;
+  
+      // 3. Upload Audio Directly to Google Cloud Storage
+      statusText.innerText = "Uploading secure audio (Do not close tab yet)...";
+      await fetch(ticketData.uploadUrl, { 
+        method: 'PUT', 
+        headers: { 'Content-Type': mimeType }, 
+        body: recordedAudioBlob 
+      });
+  
+      // 4. Activate Supabase Realtime Listener
+      statusText.innerText = "Upload complete. AI processing in the cloud. You may safely lock your device.";
+      transcriptContent.innerHTML = "<p>Listening for cloud completion signal...</p>";
+      reportContent.innerHTML = "<p>Processing heavy compute load...</p>";
+  
+      const channel = supabaseClient.channel(`session-${currentRecordId}`)
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'session_notes', 
+          filter: `id=eq.${currentRecordId}` 
+        }, async (payload) => {
+          
+          if (payload.new.status === 'completed') {
+            statusText.innerText = "Signal received. Encrypting notes locally...";
+            const rawText = payload.new.temp_raw_text;
+            
+            let sections = rawText.split('|||');
+            if (sections.length < 2) sections = [rawText, "Delimiter missing."];
+            
+            const finalTranscriptHtml = marked.parse(sections[0].trim());
+            const finalReportHtml = marked.parse(sections[1].trim());
+  
+            transcriptContent.innerHTML = finalTranscriptHtml;
+            reportContent.innerHTML = finalReportHtml;
+  
+            // 5. Execute Encryption Handoff & Delete Raw Text
+            const encryptedReport = await encryptTextEnvelope(finalReportHtml, currentUserPassword);
+            const encryptedTranscript = await encryptTextEnvelope(finalTranscriptHtml, currentUserPassword);
+  
+            await supabaseClient.from('session_notes').update({
+              report_text: encryptedReport,
+              transcript_text: encryptedTranscript,
+              temp_raw_text: null // Wipe the raw text permanently
+            }).eq('id', currentRecordId);
+  
+            statusText.innerText = "Session complete. Notes safely encrypted and saved.";
+            statusPanel.className = 'status-panel panel-stopped';
+            clearAudioDB();
+            releaseWakeLock();
+            supabaseClient.removeChannel(channel);
+          } else if (payload.new.status === 'failed') {
+            throw new Error("Cloud processing failed.");
+          }
+        })
+        .subscribe();
+  
+    } catch (err) {
+      reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
+      statusText.innerText = "System Error."; 
+      statusPanel.className = 'status-panel';
+      processBtn.disabled = false;
+      releaseWakeLock();
+    }
+  });
 
     // ---------------------------------------------------------
     // ARCHIVE DASHBOARD & SOFT DELETION
