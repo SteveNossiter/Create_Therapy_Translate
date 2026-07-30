@@ -1,4 +1,601 @@
-// 2. REALTIME LISTENER
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Therapy Session Notes</title>
+  <link rel="icon" href="data:,">
+  
+  <!-- Supabase, Marked.js, & Google Fonts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600&family=Momo+Trust+Display&display=swap" rel="stylesheet">
+
+  <style>
+    :root { 
+      --primary: #007aff; --primary-dark: #005bb5;
+      --danger: #ff3b30; --danger-dark: #b32a22;
+      --success: #34c759; --success-dark: #248a3d;
+      --warning: #ff9500; --text: #0a2e3f; 
+    }
+    
+    body { 
+      font-family: 'League Spartan', sans-serif; max-width: 900px; margin: 0 auto; padding: 30px 20px; 
+      color: var(--text); line-height: 1.5; background-image: url('IMG_4213.png'); background-size: cover; 
+      background-position: center; background-attachment: fixed; 
+    }
+    
+    h1 { font-family: 'Momo Trust Display', cursive; font-size: 46px; font-weight: 700; color: #0e7e89; margin-bottom: 5px; margin-top: 35px; letter-spacing: 1px; }
+    h2 { margin-top: 0; font-size: 22px; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.5); padding-bottom: 12px; margin-bottom: 15px; }
+    p.subtitle { color: #3a5a6b; font-weight: 400; margin-top: 0; margin-bottom: 20px; font-size: 18px; }
+    
+    .glass-panel { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 24px; padding: 30px; margin-bottom: 30px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); position: relative; }
+    
+    /* Hamburger Menu */
+    .menu-container { position: absolute; top: 20px; right: 20px; z-index: 100; }
+    .menu-toggle { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(10, 46, 63, 0.2); color: var(--text); font-size: 22px; font-weight: bold; cursor: pointer; border-radius: 8px; padding: 6px 12px; line-height: 1; transition: all 0.2s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .menu-toggle:hover { background: rgba(255, 255, 255, 1); transform: scale(1.05); }
+    .dropdown-menu { display: none; position: absolute; top: 45px; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(10, 46, 63, 0.1); border-radius: 12px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); flex-direction: column; gap: 8px; min-width: 180px; }
+    .dropdown-menu.active { display: flex; }
+    .nav-btn { background: transparent; color: var(--text); border: none; padding: 10px 15px; font-size: 15px; font-weight: 600; font-family: 'League Spartan', sans-serif; border-radius: 8px; cursor: pointer; transition: background 0.2s ease; text-align: left; width: 100%; }
+    .nav-btn:hover { background: rgba(10, 46, 63, 0.05); }
+
+    .metadata-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 25px; background: rgba(255,255,255,0.4); padding: 15px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.4); }
+    @media (min-width: 600px) { .metadata-grid { grid-template-columns: 1fr 1fr; } }
+    .input-field { font-family: 'League Spartan', sans-serif; width: 100%; padding: 12px; border: 2px solid rgba(10, 46, 63, 0.1); border-radius: 12px; box-sizing: border-box; font-size: 15px; background: rgba(255,255,255,0.7); outline: none; }
+    .input-field:focus { border-color: var(--primary); }
+
+    .controls { display: flex; gap: 3%; margin-bottom: 25px; justify-content: center; align-items: center; width: 100%; }
+    .stone-btn { flex: 1 1 0; max-width: 140px; aspect-ratio: 2 / 1; height: auto; background-color: transparent; background-size: contain; background-position: center; background-repeat: no-repeat; border: none; cursor: pointer; transition: all 0.1s ease; transform: translateY(-4px); filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4)); padding: 0; }
+    .stone-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: translateY(0); filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.2)) grayscale(40%); }
+    .stone-btn:active:not(:disabled) { transform: translateY(0); filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.6)); }
+    #recordBtn { background-image: url('record-stone-no-bg.png'); }
+    #stopBtn { background-image: url('stop-stone-no-bg.png'); }
+    #processBtn { background-image: url('generate-stone-no-bg.png'); }
+    
+    .ui-btn { font-family: 'League Spartan', sans-serif; padding: 12px 24px; font-size: 18px; font-weight: 500; border: none; border-radius: 50px; cursor: pointer; color: white; transition: all 0.1s ease; transform: translateY(-4px); background-color: var(--primary); box-shadow: 0 6px 0px var(--primary-dark), 0 10px 15px rgba(0,0,0,0.1); width: 100%;}
+    .ui-btn:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1); }
+
+    .status-panel { background: rgba(255, 255, 255, 0.5); padding: 15px 20px; border-radius: 16px; font-size: 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255, 255, 255, 0.4); transition: box-shadow 0.4s ease; }
+    .status-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .status-panel.panel-recording { animation: innerPulseRed 1.5s infinite alternate; }
+    .status-panel.panel-stopped { box-shadow: inset 0 0 20px rgba(52, 199, 89, 0.4); }
+    .status-panel.panel-processing { box-shadow: inset 0 0 20px rgba(255, 149, 0, 0.5); }
+    @keyframes innerPulseRed { 0% { box-shadow: inset 0 0 8px rgba(255, 59, 48, 0.2); } 100% { box-shadow: inset 0 0 25px rgba(255, 59, 48, 0.6); } }
+    .status-text { font-weight: 500; line-height: 1.3; }
+    
+    .recovery-banner { display: none; background: rgba(255, 149, 0, 0.15); border: 1px solid rgba(255, 149, 0, 0.4); border-radius: 10px; padding: 15px; font-size: 14px; color: #7a4300; font-weight: 500; line-height: 1.4; margin-bottom: 20px; justify-content: space-between; align-items: center; }
+    .recovery-banner.active { display: flex; }
+    
+    .timer { font-family: monospace; font-size: 18px; font-weight: 600; color: var(--text); }
+    .timer.recording-active { color: var(--danger); }
+    
+    #loginScreen { max-width: 400px; margin: 80px auto; text-align: center; }
+    #loginScreen h2 { font-family: 'Momo Trust Display', cursive; font-size: 38px; color: #0e7e89; border-bottom: none; margin-bottom: 5px; font-weight: 700; letter-spacing: 1px; }
+    .password-wrapper { position: relative; width: 100%; margin-bottom: 20px; }
+    .password-wrapper .input-field { margin-bottom: 0; padding-right: 60px; }
+    .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; }
+    #loginError { color: var(--danger); font-size: 15px; margin-top: 15px; display: none; font-weight: 500; }
+    
+    #mainApp { display: none; }
+
+    .windows-container { display: flex; flex-direction: column; gap: 20px; display: none; }
+    .windows-container.active { display: flex; }
+    
+    .window-card { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; }
+    .export-controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    .export-btn { font-family: 'League Spartan', sans-serif; border: none; color: white; background-color: var(--success); padding: 8px 16px; font-size: 14px; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0px var(--success-dark); transform: translateY(-2px); transition: all 0.1s ease; }
+    .export-btn:active:not(:disabled) { box-shadow: 0 1px 0px var(--success-dark); transform: translateY(0); }
+    .export-btn.secondary { background-color: var(--primary); box-shadow: 0 4px 0px var(--primary-dark); }
+    .export-btn.secondary:active:not(:disabled) { box-shadow: 0 1px 0px var(--primary-dark); transform: translateY(0); }
+    .export-btn.danger { background-color: var(--danger); box-shadow: 0 4px 0px var(--danger-dark); }
+    .export-btn.danger:active:not(:disabled) { box-shadow: 0 1px 0px var(--danger-dark); transform: translateY(0); }
+    
+    .content-box { font-size: 11pt; color: #1c1c1e; flex-grow: 1; background: rgba(255, 255, 255, 0.4); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.4); overflow-y: auto; max-height: 600px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .content-box h3 { font-size: 14pt; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; }
+    .content-box h2, .content-box h1 { font-size: 16pt; font-weight: bold; }
+    .content-box ul { padding-left: 24px; margin-top: 0.5em; margin-bottom: 1em; }
+    .content-box li { margin-bottom: 0.5em; }
+    .content-box p { margin-top: 0; margin-bottom: 1em; }
+
+    #transcriptContainer { display: none; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 46, 63, 0.5); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-content { background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 24px; padding: 30px; max-width: 650px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2); transform: translateY(20px); transition: transform 0.3s ease; position: relative; }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+    .modal-close { position: absolute; top: 15px; right: 15px; background: rgba(10, 46, 63, 0.05); border: none; width: 32px; height: 32px; font-size: 20px; border-radius: 50%; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
+    
+    .modal-content h3 { font-family: 'Momo Trust Display', cursive; color: #0e7e89; font-size: 28px; margin-top: 0; margin-bottom: 20px; }
+    .modal-content h4 { font-size: 18px; margin-bottom: 10px; margin-top: 25px; border-bottom: 2px solid rgba(14, 126, 137, 0.2); padding-bottom: 8px; color: var(--text); }
+    .modal-content ul, .modal-content ol { padding-left: 20px; margin-bottom: 15px; }
+    .modal-content li { font-size: 15px; margin-bottom: 8px; color: #3a3a3c; }
+    
+    .archive-list { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+    .archive-item { background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(10, 46, 63, 0.1); border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .archive-details strong { font-size: 16px; color: var(--text); display: block; }
+    .archive-details span { font-size: 13px; color: #3a5a6b; }
+    .archive-actions { display: flex; gap: 8px; }
+    .btn-small { padding: 6px 12px; font-size: 12px; border-radius: 20px; border: none; cursor: pointer; font-family: 'League Spartan', sans-serif; font-weight: 500; color: white; transition: all 0.1s ease; }
+    .btn-view { background-color: var(--primary); }
+    .btn-delete { background-color: var(--danger); }
+    .btn-small:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="glass-panel">
+    <h2>Clinic Login</h2>
+    <p class="subtitle" style="margin-bottom: 25px;">Secure Session Access</p>
+    <input type="email" id="emailInput" class="input-field" placeholder="Email Address">
+    <div class="password-wrapper">
+      <input type="password" id="passwordInput" class="input-field" placeholder="Password">
+      <button type="button" id="togglePasswordBtn" class="toggle-password">Show</button>
+    </div>
+    <button id="loginBtn" class="ui-btn">Log In</button>
+    <div id="loginError"></div>
+  </div>
+
+  <!-- MAIN APPLICATION -->
+  <div id="mainApp">
+    <div class="glass-panel">
+      
+      <!-- Hamburger Menu -->
+      <div class="menu-container">
+        <button id="menuToggle" class="menu-toggle">☰</button>
+        <div id="dropdownMenu" class="dropdown-menu">
+          <button id="archiveBtn" class="nav-btn">Archive</button>
+          <button id="infoBtn" class="nav-btn">Info & Instructions</button>
+          <button id="logoutBtn" class="nav-btn">Log Out</button>
+        </div>
+      </div>
+
+      <h1>Create Therapy Notes</h1>
+      <p class="subtitle">Secure transcription & clinical reporting</p>
+      
+      <!-- Recovery Banner (Hidden by default) -->
+      <div id="recoveryBanner" class="recovery-banner">
+        <div><strong>Crash Recovered:</strong> An unsaved audio session was found.</div>
+        <div style="display: flex; gap: 10px;">
+          <button class="export-btn secondary" id="recoverProcessBtn">Process It</button>
+          <button class="export-btn danger" id="recoverDiscardBtn">Discard</button>
+        </div>
+      </div>
+
+      <!-- Pre-Session Metadata Inputs -->
+      <div class="metadata-grid">
+        <select id="templateSelect" class="input-field">
+          <option value="therapy">Art Therapy Report</option>
+          <option value="meeting">Meeting Notes</option>
+        </select>
+        <input type="text" id="clientRefInput" class="input-field" placeholder="Client Initials / ID">
+        <input type="text" id="locationInput" class="input-field" placeholder="Location (e.g., In-Clinic, Telehealth)">
+        <input type="text" id="attendeesInput" class="input-field" placeholder="Additional Attendees (Optional)">
+      </div>
+
+      <div class="controls">
+        <button id="recordBtn" class="stone-btn" aria-label="Record"></button>
+        <button id="stopBtn" class="stone-btn" aria-label="Stop" disabled></button>
+        <button id="processBtn" class="stone-btn" aria-label="Generate" disabled></button>
+      </div>
+
+      <div class="status-panel" id="statusPanel">
+        <div class="status-row">
+          <span class="status-text" id="status">Ready to record.</span>
+          <span class="timer" id="timer">00:00:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORT-FIRST UI WINDOWS -->
+    <div class="windows-container" id="windowsContainer">
+      <div class="window-card">
+        <h2>Clinical Report</h2>
+        <div class="export-controls">
+          <button class="export-btn" onclick="copyContent('reportContent', this)">Copy Report</button>
+          <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
+          <button class="export-btn secondary" id="toggleTranscriptBtn">View Raw Transcript</button>
+          <button class="export-btn danger" id="resetBtn">Clear Session</button>
+        </div>
+        <div id="reportContent" class="content-box" contenteditable="true">Awaiting data...</div>
+      </div>
+
+      <div class="window-card" id="transcriptContainer">
+        <h2>Verbatim Transcript</h2>
+        <div class="export-controls">
+          <button class="export-btn" onclick="copyContent('transcriptContent', this)">Copy Transcript</button>
+        </div>
+        <div id="transcriptContent" class="content-box" contenteditable="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARCHIVE MODAL -->
+  <div id="archiveModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeArchiveBtn" class="modal-close">&times;</button>
+      <h3>Session Archive</h3>
+      <p style="font-size: 14px; margin-bottom: 20px;">Your historical sessions, protected securely at rest.</p>
+      
+      <input type="text" id="searchArchiveInput" class="input-field" placeholder="Search Client Initials...">
+      
+      <div class="archive-list" id="archiveList">
+        <p style="text-align: center; color: #666; margin-top: 20px;">Loading encrypted records...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO & COMPLIANCE MODAL -->
+  <div id="infoModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeInfoBtn" class="modal-close">&times;</button>
+      <h3>Information & Security</h3>
+
+      <h4>Quick Start Instructions</h4>
+      <ol>
+        <li><strong>Prepare:</strong> Enter the client's initials and select your desired report template.</li>
+        <li><strong>Record:</strong> Tap the Record stone. Your device screen will automatically lock awake.</li>
+        <li><strong>Process:</strong> Tap Stop, then Generate. Keep this window open and active until your notes appear.</li>
+        <li><strong>Clear Workspace:</strong> After exporting your notes, tap 'Clear Session' to securely hide the record in your Archive.</li>
+      </ol>
+      
+      <h4>Security Architecture Update</h4>
+      <ul>
+        <li><strong>Server-Side Encryption at Rest:</strong> Notes are encrypted securely inside Cloud Run prior to being stored in Supabase, preventing database exposure risks.</li>
+        <li><strong>Crash Recovery:</strong> Session audio is silently cached to your device's IndexedDB while recording. If your browser crashes or reloads mid-session, your audio is preserved.</li>
+        <li><strong>Row Level Security (RLS):</strong> The database physically blocks access to any records that do not belong to your specific authenticated user token.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // ---------------------------------------------------------
+    // SUPABASE CONFIGURATION
+    // ---------------------------------------------------------
+    const SUPABASE_URL = 'https://awtyxmetipldytjmzayb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
+    
+    // Cloud Run Function URL
+    const WORKER_URL = 'https://audio-processor-background-4twmdpvu3q-uc.a.run.app';
+    
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: window.sessionStorage } });
+
+    let currentUserId = null; 
+    let currentTherapistName = "Therapist";
+    let activeSessionRecordId = null;
+
+    // ---------------------------------------------------------
+    // UTILITIES: XSS SANITIZATION
+    // ---------------------------------------------------------
+    function escapeHTML(str) {
+      if (!str) return "";
+      return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+    }
+
+    // ---------------------------------------------------------
+    // INDEXED-DB: CRASH RECOVERY SYSTEM
+    // ---------------------------------------------------------
+    let db;
+    const dbName = "TherapyAudioDB";
+    const storeName = "audioChunks";
+
+    const initDB = new Promise((resolve, reject) => {
+      const request = indexedDB.open(dbName, 1);
+      request.onupgradeneeded = (e) => {
+        let localDb = e.target.result;
+        if (!localDb.objectStoreNames.contains(storeName)) {
+          localDb.createObjectStore(storeName, { autoIncrement: true });
+        }
+      };
+      request.onsuccess = (e) => { db = e.target.result; resolve(); };
+      request.onerror = (e) => reject(e.target.error);
+    });
+
+    async function saveChunkToDB(blob) {
+      if (!db) return;
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).add(blob);
+    }
+
+    async function clearAudioDB() {
+      if (!db) return;
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).clear();
+    }
+
+    async function checkRecovery() {
+      await initDB;
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        if (request.result && request.result.length > 0) {
+          document.getElementById('recoveryBanner').classList.add('active');
+          
+          document.getElementById('recoverProcessBtn').onclick = () => {
+            const recoveredBlob = new Blob(request.result, { type: 'audio/webm' });
+            recordedAudioBlob = recoveredBlob;
+            mimeType = 'audio/webm';
+            document.getElementById('recoveryBanner').classList.remove('active');
+            document.getElementById('status').innerText = "Session recovered. Ready to process.";
+            document.getElementById('processBtn').disabled = false;
+          };
+          
+          document.getElementById('recoverDiscardBtn').onclick = () => {
+            clearAudioDB();
+            document.getElementById('recoveryBanner').classList.remove('active');
+          };
+        }
+      };
+    }
+
+    // ---------------------------------------------------------
+    // SERVER-SIDE DECRYPTION HELPER VIA CLOUD RUN
+    // ---------------------------------------------------------
+    async function decryptFromServer(encryptedPayload) {
+      if (!encryptedPayload) return "";
+      try {
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'X-Action': 'decrypt', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload: encryptedPayload })
+        });
+        const data = await res.json();
+        return data.decryptedText || "[Decryption Error]";
+      } catch (err) {
+        console.error("Decryption request failed:", err);
+        return "[Decryption Error: Connection Failed]";
+      }
+    }
+
+    // ---------------------------------------------------------
+    // MENU LOGIC
+    // ---------------------------------------------------------
+    const menuToggle = document.getElementById('menuToggle');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+    menuToggle.addEventListener('click', (e) => { dropdownMenu.classList.toggle('active'); e.stopPropagation(); });
+    document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuToggle) dropdownMenu.classList.remove('active'); });
+    document.querySelectorAll('.dropdown-menu .nav-btn').forEach(btn => btn.addEventListener('click', () => dropdownMenu.classList.remove('active')));
+
+    // ---------------------------------------------------------
+    // UI LOGIC & AUTHENTICATION 
+    // ---------------------------------------------------------
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('passwordInput');
+    const emailInput = document.getElementById('emailInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+
+    togglePasswordBtn.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      togglePasswordBtn.innerText = type === 'password' ? 'Show' : 'Hide';
+    });
+
+    async function performLogout() {
+      await supabaseClient.auth.signOut();
+      sessionStorage.removeItem('loginTimestamp');
+      window.location.reload();
+    }
+
+    function startSessionTimer(loginTime) { setInterval(() => { if ((Date.now() - parseInt(loginTime)) > 43200000) performLogout(); }, 60000); }
+
+    async function checkSession() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        const loginTime = sessionStorage.getItem('loginTimestamp');
+        if (loginTime && (Date.now() - parseInt(loginTime)) > 43200000) { await performLogout(); return; }
+
+        currentUserId = session.user.id;
+        currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
+        
+        loginScreen.style.display = 'none'; mainApp.style.display = 'block';
+        startSessionTimer(loginTime); checkRecovery();
+      }
+    }
+    checkSession();
+
+    loginBtn.addEventListener('click', async () => {
+      loginBtn.innerText = "Authenticating..."; loginBtn.disabled = true; loginError.style.display = 'none';
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value.trim(), password: passwordInput.value });
+        if (error) throw error;
+        if (data.session) {
+          sessionStorage.setItem('loginTimestamp', Date.now().toString());
+          currentUserId = data.session.user.id;
+          currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email; 
+          loginScreen.style.display = 'none'; mainApp.style.display = 'block';
+          startSessionTimer(Date.now()); checkRecovery();
+        }
+      } catch (err) { loginError.innerText = err.message; loginError.style.display = 'block'; loginBtn.innerText = "Log In"; loginBtn.disabled = false; }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', performLogout);
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (!confirm("Clear the screen for your next session? The current notes have been securely saved and can be retrieved from your Archive anytime.")) return;
+      
+      document.getElementById('windowsContainer').classList.remove('active');
+      document.getElementById('transcriptContent').innerHTML = "Awaiting data...";
+      document.getElementById('reportContent').innerHTML = "Awaiting data...";
+      document.getElementById('clientRefInput').value = "";
+      document.getElementById('locationInput').value = "";
+      document.getElementById('attendeesInput').value = "";
+      
+      recordedAudioBlob = null; audioChunks = []; clearAudioDB();
+      activeSessionRecordId = null; 
+
+      document.getElementById('status').innerText = "Ready to record.";
+      document.getElementById('timer').innerText = "00:00:00";
+      document.getElementById('statusPanel').className = 'status-panel';
+      document.getElementById('recordBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      document.getElementById('processBtn').disabled = true;
+      
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); }
+      clearInterval(timerInterval);
+    });
+
+    const toggleTranscriptBtn = document.getElementById('toggleTranscriptBtn');
+    const transcriptContainer = document.getElementById('transcriptContainer');
+    toggleTranscriptBtn.addEventListener('click', () => {
+      if (transcriptContainer.style.display === 'flex') { transcriptContainer.style.display = 'none'; toggleTranscriptBtn.innerText = "View Raw Transcript"; } 
+      else { transcriptContainer.style.display = 'flex'; toggleTranscriptBtn.innerText = "Hide Raw Transcript"; }
+    });
+
+    const infoModal = document.getElementById('infoModal');
+    document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('active'));
+    document.getElementById('closeInfoBtn').addEventListener('click', () => infoModal.classList.remove('active'));
+
+    // ---------------------------------------------------------
+    // RECORDING, GENERATION LOGIC
+    // ---------------------------------------------------------
+    let mediaRecorder; let audioChunks = []; let recordedAudioBlob = null;
+    let mimeType = ''; let timerInterval; let secondsElapsed = 0;
+    let wakeLock = null;
+
+    async function requestWakeLock() { try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {} }
+    function releaseWakeLock() { if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); } }
+    function formatTime(sec) { const h = Math.floor(sec / 3600).toString().padStart(2, '0'); const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0'); const s = (sec % 60).toString().padStart(2, '0'); return `${h}:${m}:${s}`; }
+
+    const recordBtn = document.getElementById('recordBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const processBtn = document.getElementById('processBtn');
+    const statusText = document.getElementById('status');
+    const timerDisplay = document.getElementById('timer');
+    const statusPanel = document.getElementById('statusPanel');
+
+    recordBtn.addEventListener('click', async () => {
+      try {
+        await clearAudioDB();
+        activeSessionRecordId = null;
+        
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 16000 });
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = e => { 
+          if (e.data.size > 0) { 
+            audioChunks.push(e.data); 
+            saveChunkToDB(e.data);
+          } 
+        };
+        
+        mediaRecorder.onstop = () => {
+          clearInterval(timerInterval);
+          mimeType = mediaRecorder.mimeType || 'audio/webm';
+          recordedAudioBlob = new Blob(audioChunks, { type: mimeType });
+          statusText.innerText = "Audio captured. Ready to process.";
+          processBtn.disabled = false;
+        };
+
+        mediaRecorder.start(1000); secondsElapsed = 0;
+        timerInterval = setInterval(() => { secondsElapsed++; timerDisplay.innerText = formatTime(secondsElapsed); }, 1000);
+        await requestWakeLock();
+
+        statusText.innerText = "Recording session (Screen locked ON)...";
+        recordBtn.disabled = true; stopBtn.disabled = false; processBtn.disabled = true;
+        document.getElementById('windowsContainer').classList.remove('active');
+        timerDisplay.classList.add('recording-active');
+        statusPanel.className = 'status-panel panel-recording';
+      } catch (err) { statusText.innerText = "Error: Microphone access denied."; }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); }
+      recordBtn.disabled = false; stopBtn.disabled = true;
+      timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
+    });
+
+    async function renderFinalNotes(recordId, channelToClean) {
+      statusText.innerText = "Finalizing secure notes...";
+      
+      try {
+        const { data: fullRecord, error } = await supabaseClient
+          .from('session_notes')
+          .select('report_text, transcript_text')
+          .eq('id', recordId)
+          .single();
+          
+        if (error || !fullRecord) {
+           statusText.innerText = "Error pulling finalized text. Please check the Archive.";
+           return;
+        }
+
+        const rawReport = await decryptFromServer(fullRecord.report_text);
+        const rawTranscript = await decryptFromServer(fullRecord.transcript_text);
+
+        document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
+        document.getElementById('transcriptContent').innerHTML = marked.parse(rawTranscript);
+
+        statusText.innerText = "Session complete. Notes safely encrypted and saved.";
+        statusPanel.className = 'status-panel panel-stopped';
+        
+        releaseWakeLock();
+        if (channelToClean) {
+            supabaseClient.removeChannel(channelToClean);
+        }
+      } catch (err) {
+        console.error("Render error:", err);
+      }
+    }
+
+    processBtn.addEventListener('click', async () => {
+      if (!recordedAudioBlob) return;
+      await requestWakeLock();
+    
+      const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Client";
+      statusPanel.className = 'status-panel panel-processing';
+      processBtn.disabled = true;
+      document.getElementById('windowsContainer').classList.add('active');
+      
+      const transcriptContent = document.getElementById('transcriptContent');
+      const reportContent = document.getElementById('reportContent');
+      let currentUiStatus = 'pending';
+    
+      try {
+        statusText.innerText = "Encrypting and establishing secure link...";
+        const ticketRes = await fetch(WORKER_URL, { 
+          method: 'POST', 
+          headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ mimeType: mimeType })
+        });
+        const ticketData = await ticketRes.json();
+    
+        const targetFileName = String(ticketData.fileName); 
+        
+        const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
+          .insert({
+            therapist_id: currentUserId,
+            client_reference: clientRef,
+            file_id: targetFileName,
+            status: 'pending'
+          }).select().single();
+          
+        if (insertError) throw insertError;
+        activeSessionRecordId = newRecord.id;
+    
+        statusText.innerText = "Uploading audio vault chunk (Do not close tab yet)...";
+        await fetch(ticketData.uploadUrl, { 
+          method: 'PUT', 
+          headers: { 'Content-Type': mimeType }, 
+          body: recordedAudioBlob 
+        });
+
+        // 1. CLEAR CRASH CACHE IMMEDIATELY AFTER CLOUD HAND-OFF
+        clearAudioDB(); 
+    
+        statusText.innerText = "Upload complete. Secure processing initiated.";
+        transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Queuing secure processing...</em></p>";
+        reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Waiting for cloud processing to begin...</em></p>";
+    
+        // 2. REALTIME LISTENER
         const channel = supabaseClient.channel(`session-${activeSessionRecordId}`)
           .on('postgres_changes', { 
             event: 'UPDATE', 
@@ -8,7 +605,7 @@
           }, async (payload) => {
             const newStatus = payload.new.status;
             
-            // Note: We bypassed 'transcribing' because both tasks run in parallel now
+            // Note: We bypass 'transcribing' because both tasks run in parallel now under 'analyzing'
             if (newStatus === 'analyzing') {
               currentUiStatus = 'analyzing';
               statusText.innerText = "Analyzing audio... (This may take several minutes for long files)";
@@ -67,3 +664,126 @@
                supabaseClient.removeChannel(channel);
            }
         }, 15000);
+    
+      } catch (err) {
+        reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
+        statusText.innerText = "System Error."; 
+        statusPanel.className = 'status-panel';
+        processBtn.disabled = false;
+        releaseWakeLock();
+      }
+    });
+
+    // ---------------------------------------------------------
+    // ARCHIVE DASHBOARD & SOFT DELETION
+    // ---------------------------------------------------------
+    const archiveModal = document.getElementById('archiveModal');
+    const archiveList = document.getElementById('archiveList');
+    const searchArchiveInput = document.getElementById('searchArchiveInput');
+
+    document.getElementById('archiveBtn').addEventListener('click', () => { archiveModal.classList.add('active'); fetchArchive(); });
+    document.getElementById('closeArchiveBtn').addEventListener('click', () => archiveModal.classList.remove('active'));
+
+    async function fetchArchive(searchQuery = "") {
+      archiveList.innerHTML = '<p style="text-align: center;">Loading secure records...</p>';
+      try {
+        const safeQuery = escapeHTML(searchQuery);
+        let query = supabaseClient.from('session_notes')
+          .select('id, client_reference, created_at, report_text, transcript_text')
+          .is('deleted_at', null).order('created_at', { ascending: false });
+          
+        if (safeQuery) { query = query.ilike('client_reference', `%${safeQuery}%`); }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+
+        archiveList.innerHTML = '';
+        if (data.length === 0) { archiveList.innerHTML = '<p style="text-align: center;">No active records found.</p>'; return; }
+
+        const now = new Date();
+        data.forEach(record => {
+          const creationDate = new Date(record.created_at);
+          const dateString = creationDate.toLocaleDateString() + ' ' + creationDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          const expirationDate = new Date(creationDate.getTime() + (30 * 24 * 60 * 60 * 1000));
+          const daysRemaining = Math.ceil((expirationDate - now) / (1000 * 60 * 60 * 24));
+          
+          let countdownHtml = "";
+          if (daysRemaining > 5) countdownHtml = `<span style="font-size: 12px; color: #3a5a6b; background: rgba(58, 90, 107, 0.1); padding: 2px 8px; border-radius: 10px;">Expires in ${daysRemaining} days</span>`;
+          else if (daysRemaining > 0) countdownHtml = `<span style="font-size: 12px; color: #ff9500; font-weight: 600; background: rgba(255, 149, 0, 0.1); padding: 2px 8px; border-radius: 10px;">Expires in ${daysRemaining} days</span>`;
+          else countdownHtml = `<span style="font-size: 12px; color: #ff3b30; font-weight: 600; background: rgba(255, 59, 48, 0.1); padding: 2px 8px; border-radius: 10px;">Pending Auto-Deletion</span>`;
+          
+          const safeClientRef = escapeHTML(record.client_reference);
+          
+          const item = document.createElement('div');
+          item.className = 'archive-item';
+          item.innerHTML = `
+            <div class="archive-details">
+              <strong>${safeClientRef}</strong>
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                <span>${dateString}</span>${countdownHtml}
+              </div>
+            </div>
+            <div class="archive-actions">
+              <button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>
+              <button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button>
+            </div>
+          `;
+          archiveList.appendChild(item);
+        });
+      } catch (err) { archiveList.innerHTML = `<p style="color:red;">Error fetching archive: ${err.message}</p>`; }
+    }
+
+    searchArchiveInput.addEventListener('input', (e) => fetchArchive(e.target.value.trim()));
+
+    window.loadArchivedRecord = async function(id, encodedReport, encodedTranscript) {
+      activeSessionRecordId = id; 
+      archiveModal.classList.remove('active'); 
+      document.getElementById('windowsContainer').classList.add('active');
+      
+      const cipherReport = atob(encodedReport);
+      const cipherTranscript = atob(encodedTranscript);
+
+      const rawReport = await decryptFromServer(cipherReport);
+      const rawTranscript = await decryptFromServer(cipherTranscript);
+
+      document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
+      document.getElementById('transcriptContent').innerHTML = marked.parse(rawTranscript);
+      document.getElementById('status').innerText = "Loaded record from archive.";
+    };
+
+    window.softDeleteRecord = async function(id) {
+      if (!confirm("WARNING: Are you absolutely sure you want to delete this record?\n\nThis action will delete it forever and you cannot get it back.")) return;
+      try {
+        const { error } = await supabaseClient.from('session_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+        
+        // Auto-clear workspace if deleting the active record
+        if (activeSessionRecordId === id) {
+            document.getElementById('resetBtn').click();
+        }
+        
+        fetchArchive(searchArchiveInput.value.trim()); 
+      } catch (err) { alert("Failed to delete record: " + err.message); }
+    };
+
+    // ---------------------------------------------------------
+    // COPY / EXPORT UTILITIES
+    // ---------------------------------------------------------
+    async function copyContent(elementId, btnElement) {
+      const contentBox = document.getElementById(elementId);
+      try {
+        const clipboardItem = new ClipboardItem({ "text/plain": new Blob([contentBox.innerText], { type: "text/plain" }), "text/html": new Blob([contentBox.innerHTML], { type: "text/html" }) });
+        await navigator.clipboard.write([clipboardItem]);
+        const orig = btnElement.innerText; btnElement.innerText = "Copied!"; setTimeout(() => btnElement.innerText = orig, 2000);
+      } catch (err) { alert("Failed to copy rich text."); }
+    }
+
+    function downloadContent(elementId, prefix) {
+      const text = document.getElementById(elementId).innerText; const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url; a.download = `${prefix}_${dateStr}.txt`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
