@@ -92,8 +92,14 @@
     .export-btn.danger:active:not(:disabled) { box-shadow: 0 1px 0px var(--danger-dark); transform: translateY(0); }
     
     .content-box { font-size: 11pt; color: #1c1c1e; flex-grow: 1; background: rgba(255, 255, 255, 0.4); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.4); overflow-y: auto; max-height: 600px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    .content-box h3 { font-size: 14pt; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; }
-    .content-box h2, .content-box h1 { font-size: 16pt; font-weight: bold; }
+    
+    /* UPDATED HEADER RENDERING RULES */
+    .content-box h1 { font-size: 16pt; font-weight: normal; margin-top: 1.5em; margin-bottom: 0.5em; }
+    .content-box h1 strong { font-weight: bold; }
+    .content-box h2 { font-size: 14pt; font-weight: normal; margin-top: 1em; margin-bottom: 0.5em; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 4px; }
+    .content-box h2 strong { font-weight: bold; }
+    .content-box h3 { font-size: 12pt; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+    
     .content-box ul { padding-left: 24px; margin-top: 0.5em; margin-bottom: 1em; }
     .content-box li { margin-bottom: 0.5em; }
     .content-box p { margin-top: 0; margin-bottom: 1em; }
@@ -445,7 +451,27 @@
         };
 
         mediaRecorder.start(1000); secondsElapsed = 0;
-        timerInterval = setInterval(() => { secondsElapsed++; timerDisplay.innerText = formatTime(secondsElapsed); }, 1000);
+        
+        timerInterval = setInterval(() => { 
+          secondsElapsed++; 
+          timerDisplay.innerText = formatTime(secondsElapsed); 
+          
+          if (secondsElapsed >= 7200) {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') { 
+              mediaRecorder.stop(); 
+              mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
+            }
+            recordBtn.disabled = false; 
+            stopBtn.disabled = true;
+            timerDisplay.classList.remove('recording-active'); 
+            statusPanel.className = 'status-panel panel-stopped';
+            
+            setTimeout(() => { 
+              statusText.innerText = "2-Hour Safety Limit Reached. Audio captured."; 
+            }, 50);
+          }
+        }, 1000);
+        
         await requestWakeLock();
 
         statusText.innerText = "Recording session (Screen locked ON)...";
@@ -502,7 +528,6 @@
       try {
         statusText.innerText = "Encrypting and establishing secure link...";
         
-        // --- THIS IS THE CRITICAL FIX FOR THE DROPDOWN ---
         const ticketRes = await fetch(WORKER_URL, { 
           method: 'POST', 
           headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
