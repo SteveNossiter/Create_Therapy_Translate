@@ -6,7 +6,6 @@
   <title>Create Therapy Session Notes</title>
   <link rel="icon" href="data:,">
   
-  <!-- Supabase, Marked.js, & Google Fonts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,7 +32,6 @@
     
     .glass-panel { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 24px; padding: 30px; margin-bottom: 30px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); position: relative; }
     
-    /* Hamburger Menu */
     .menu-container { position: absolute; top: 20px; right: 20px; z-index: 100; }
     .menu-toggle { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(10, 46, 63, 0.2); color: var(--text); font-size: 22px; font-weight: bold; cursor: pointer; border-radius: 8px; padding: 6px 12px; line-height: 1; transition: all 0.2s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     .menu-toggle:hover { background: rgba(255, 255, 255, 1); transform: scale(1.05); }
@@ -126,7 +124,6 @@
 </head>
 <body>
 
-  <!-- LOGIN SCREEN -->
   <div id="loginScreen" class="glass-panel">
     <h2>Clinic Login</h2>
     <p class="subtitle" style="margin-bottom: 25px;">Secure Session Access</p>
@@ -139,11 +136,9 @@
     <div id="loginError"></div>
   </div>
 
-  <!-- MAIN APPLICATION -->
   <div id="mainApp">
     <div class="glass-panel">
       
-      <!-- Hamburger Menu -->
       <div class="menu-container">
         <button id="menuToggle" class="menu-toggle">☰</button>
         <div id="dropdownMenu" class="dropdown-menu">
@@ -156,7 +151,6 @@
       <h1>Create Therapy Notes</h1>
       <p class="subtitle">Secure transcription & clinical reporting</p>
       
-      <!-- Recovery Banner (Hidden by default) -->
       <div id="recoveryBanner" class="recovery-banner">
         <div><strong>Crash Recovered:</strong> An unsaved audio session was found.</div>
         <div style="display: flex; gap: 10px;">
@@ -165,7 +159,6 @@
         </div>
       </div>
 
-      <!-- Pre-Session Metadata Inputs -->
       <div class="metadata-grid">
         <select id="templateSelect" class="input-field">
           <option value="therapy">Art Therapy Report</option>
@@ -190,7 +183,6 @@
       </div>
     </div>
 
-    <!-- REPORT-FIRST UI WINDOWS -->
     <div class="windows-container" id="windowsContainer">
       <div class="window-card">
         <h2>Clinical Report</h2>
@@ -213,27 +205,22 @@
     </div>
   </div>
 
-  <!-- ARCHIVE MODAL -->
   <div id="archiveModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeArchiveBtn" class="modal-close">&times;</button>
       <h3>Session Archive</h3>
       <p style="font-size: 14px; margin-bottom: 20px;">Your historical sessions, protected securely at rest.</p>
-      
       <input type="text" id="searchArchiveInput" class="input-field" placeholder="Search Client Initials...">
-      
       <div class="archive-list" id="archiveList">
         <p style="text-align: center; color: #666; margin-top: 20px;">Loading encrypted records...</p>
       </div>
     </div>
   </div>
 
-  <!-- INFO & COMPLIANCE MODAL -->
   <div id="infoModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeInfoBtn" class="modal-close">&times;</button>
       <h3>Information & Security</h3>
-
       <h4>Quick Start Instructions</h4>
       <ol>
         <li><strong>Prepare:</strong> Enter the client's initials and select your desired report template.</li>
@@ -241,7 +228,6 @@
         <li><strong>Process:</strong> Tap Stop, then Generate. Keep this window open and active until your notes appear.</li>
         <li><strong>Clear Workspace:</strong> After exporting your notes, tap 'Clear Session' to securely hide the record in your Archive.</li>
       </ol>
-      
       <h4>Security Architecture Update</h4>
       <ul>
         <li><strong>Server-Side Encryption at Rest:</strong> Notes are encrypted securely inside Cloud Run prior to being stored in Supabase, preventing database exposure risks.</li>
@@ -252,13 +238,8 @@
   </div>
 
   <script>
-    // ---------------------------------------------------------
-    // SUPABASE CONFIGURATION
-    // ---------------------------------------------------------
     const SUPABASE_URL = 'https://awtyxmetipldytjmzayb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3dHl4bWV0aXBsZHl0am16YXliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2OTQ4NTgsImV4cCI6MjEwMDI3MDg1OH0._140M0v7pPSAPWJXOZYm8Nbw-vNVAbrqQEHfhGIm6UY';
-    
-    // Cloud Run Function URL
     const WORKER_URL = 'https://audio-processor-background-4twmdpvu3q-uc.a.run.app';
     
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: window.sessionStorage } });
@@ -267,17 +248,11 @@
     let currentTherapistName = "Therapist";
     let activeSessionRecordId = null;
 
-    // ---------------------------------------------------------
-    // UTILITIES: XSS SANITIZATION
-    // ---------------------------------------------------------
     function escapeHTML(str) {
       if (!str) return "";
       return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
     }
 
-    // ---------------------------------------------------------
-    // INDEXED-DB: CRASH RECOVERY SYSTEM
-    // ---------------------------------------------------------
     let db;
     const dbName = "TherapyAudioDB";
     const storeName = "audioChunks";
@@ -315,7 +290,6 @@
       request.onsuccess = () => {
         if (request.result && request.result.length > 0) {
           document.getElementById('recoveryBanner').classList.add('active');
-          
           document.getElementById('recoverProcessBtn').onclick = () => {
             const recoveredBlob = new Blob(request.result, { type: 'audio/webm' });
             recordedAudioBlob = recoveredBlob;
@@ -324,7 +298,6 @@
             document.getElementById('status').innerText = "Session recovered. Ready to process.";
             document.getElementById('processBtn').disabled = false;
           };
-          
           document.getElementById('recoverDiscardBtn').onclick = () => {
             clearAudioDB();
             document.getElementById('recoveryBanner').classList.remove('active');
@@ -333,9 +306,6 @@
       };
     }
 
-    // ---------------------------------------------------------
-    // SERVER-SIDE DECRYPTION HELPER VIA CLOUD RUN
-    // ---------------------------------------------------------
     async function decryptFromServer(encryptedPayload) {
       if (!encryptedPayload) return "";
       try {
@@ -347,23 +317,16 @@
         const data = await res.json();
         return data.decryptedText || "[Decryption Error]";
       } catch (err) {
-        console.error("Decryption request failed:", err);
         return "[Decryption Error: Connection Failed]";
       }
     }
 
-    // ---------------------------------------------------------
-    // MENU LOGIC
-    // ---------------------------------------------------------
     const menuToggle = document.getElementById('menuToggle');
     const dropdownMenu = document.getElementById('dropdownMenu');
     menuToggle.addEventListener('click', (e) => { dropdownMenu.classList.toggle('active'); e.stopPropagation(); });
     document.addEventListener('click', (e) => { if (!dropdownMenu.contains(e.target) && e.target !== menuToggle) dropdownMenu.classList.remove('active'); });
     document.querySelectorAll('.dropdown-menu .nav-btn').forEach(btn => btn.addEventListener('click', () => dropdownMenu.classList.remove('active')));
 
-    // ---------------------------------------------------------
-    // UI LOGIC & AUTHENTICATION 
-    // ---------------------------------------------------------
     const loginScreen = document.getElementById('loginScreen');
     const mainApp = document.getElementById('mainApp');
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
@@ -391,10 +354,8 @@
       if (session) {
         const loginTime = sessionStorage.getItem('loginTimestamp');
         if (loginTime && (Date.now() - parseInt(loginTime)) > 43200000) { await performLogout(); return; }
-
         currentUserId = session.user.id;
         currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
-        
         loginScreen.style.display = 'none'; mainApp.style.display = 'block';
         startSessionTimer(loginTime); checkRecovery();
       }
@@ -420,24 +381,20 @@
 
     document.getElementById('resetBtn').addEventListener('click', () => {
       if (!confirm("Clear the screen for your next session? The current notes have been securely saved and can be retrieved from your Archive anytime.")) return;
-      
       document.getElementById('windowsContainer').classList.remove('active');
       document.getElementById('transcriptContent').innerHTML = "Awaiting data...";
       document.getElementById('reportContent').innerHTML = "Awaiting data...";
       document.getElementById('clientRefInput').value = "";
       document.getElementById('locationInput').value = "";
       document.getElementById('attendeesInput').value = "";
-      
       recordedAudioBlob = null; audioChunks = []; clearAudioDB();
       activeSessionRecordId = null; 
-
       document.getElementById('status').innerText = "Ready to record.";
       document.getElementById('timer').innerText = "00:00:00";
       document.getElementById('statusPanel').className = 'status-panel';
       document.getElementById('recordBtn').disabled = false;
       document.getElementById('stopBtn').disabled = true;
       document.getElementById('processBtn').disabled = true;
-      
       if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); }
       clearInterval(timerInterval);
     });
@@ -453,12 +410,8 @@
     document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('active'));
     document.getElementById('closeInfoBtn').addEventListener('click', () => infoModal.classList.remove('active'));
 
-    // ---------------------------------------------------------
-    // RECORDING, GENERATION LOGIC
-    // ---------------------------------------------------------
     let mediaRecorder; let audioChunks = []; let recordedAudioBlob = null;
-    let mimeType = ''; let timerInterval; let secondsElapsed = 0;
-    let wakeLock = null;
+    let mimeType = ''; let timerInterval; let secondsElapsed = 0; let wakeLock = null;
 
     async function requestWakeLock() { try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {} }
     function releaseWakeLock() { if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); } }
@@ -475,16 +428,12 @@
       try {
         await clearAudioDB();
         activeSessionRecordId = null;
-        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 16000 });
         audioChunks = [];
         
         mediaRecorder.ondataavailable = e => { 
-          if (e.data.size > 0) { 
-            audioChunks.push(e.data); 
-            saveChunkToDB(e.data);
-          } 
+          if (e.data.size > 0) { audioChunks.push(e.data); saveChunkToDB(e.data); } 
         };
         
         mediaRecorder.onstop = () => {
@@ -515,18 +464,9 @@
 
     async function renderFinalNotes(recordId, channelToClean) {
       statusText.innerText = "Finalizing secure notes...";
-      
       try {
-        const { data: fullRecord, error } = await supabaseClient
-          .from('session_notes')
-          .select('report_text, transcript_text')
-          .eq('id', recordId)
-          .single();
-          
-        if (error || !fullRecord) {
-           statusText.innerText = "Error pulling finalized text. Please check the Archive.";
-           return;
-        }
+        const { data: fullRecord, error } = await supabaseClient.from('session_notes').select('report_text, transcript_text').eq('id', recordId).single();
+        if (error || !fullRecord) { statusText.innerText = "Error pulling finalized text."; return; }
 
         const rawReport = await decryptFromServer(fullRecord.report_text);
         const rawTranscript = await decryptFromServer(fullRecord.transcript_text);
@@ -538,12 +478,8 @@
         statusPanel.className = 'status-panel panel-stopped';
         
         releaseWakeLock();
-        if (channelToClean) {
-            supabaseClient.removeChannel(channelToClean);
-        }
-      } catch (err) {
-        console.error("Render error:", err);
-      }
+        if (channelToClean) supabaseClient.removeChannel(channelToClean);
+      } catch (err) { console.error("Render error:", err); }
     }
 
     processBtn.addEventListener('click', async () => {
@@ -567,116 +503,72 @@
           body: JSON.stringify({ mimeType: mimeType })
         });
         const ticketData = await ticketRes.json();
-    
         const targetFileName = String(ticketData.fileName); 
         
         const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
-          .insert({
-            therapist_id: currentUserId,
-            client_reference: clientRef,
-            file_id: targetFileName,
-            status: 'pending'
-          }).select().single();
+          .insert({ therapist_id: currentUserId, client_reference: clientRef, file_id: targetFileName, status: 'pending' }).select().single();
           
         if (insertError) throw insertError;
         activeSessionRecordId = newRecord.id;
     
         statusText.innerText = "Uploading audio vault chunk (Do not close tab yet)...";
-        await fetch(ticketData.uploadUrl, { 
-          method: 'PUT', 
-          headers: { 'Content-Type': mimeType }, 
-          body: recordedAudioBlob 
-        });
+        await fetch(ticketData.uploadUrl, { method: 'PUT', headers: { 'Content-Type': mimeType }, body: recordedAudioBlob });
 
-        // 1. CLEAR CRASH CACHE IMMEDIATELY AFTER CLOUD HAND-OFF
         clearAudioDB(); 
     
         statusText.innerText = "Upload complete. Secure processing initiated.";
         transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Queuing secure processing...</em></p>";
         reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Waiting for cloud processing to begin...</em></p>";
     
-        // 2. REALTIME LISTENER
         const channel = supabaseClient.channel(`session-${activeSessionRecordId}`)
-          .on('postgres_changes', { 
-            event: 'UPDATE', 
-            schema: 'public', 
-            table: 'session_notes', 
-            filter: `id=eq.${activeSessionRecordId}` 
-          }, async (payload) => {
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'session_notes', filter: `id=eq.${activeSessionRecordId}` }, async (payload) => {
             const newStatus = payload.new.status;
             
-            // Note: We bypass 'transcribing' because both tasks run in parallel now under 'analyzing'
-            if (newStatus === 'analyzing') {
-              currentUiStatus = 'analyzing';
-              statusText.innerText = "Analyzing audio... (This may take several minutes for long files)";
-              transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating verbatim transcript with speaker labels...</em></p>";
-              reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical session report simultaneously...</em></p>";
-            }
-            else if (newStatus === 'completed') {
-              await renderFinalNotes(activeSessionRecordId, channel);
+            if (newStatus === 'transcribing') {
+              currentUiStatus = 'transcribing';
+              statusText.innerText = "Transcribing audio securely...";
+              transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating high-fidelity transcript with AssemblyAI... (Usually takes a few minutes for long sessions).</em></p>";
             } 
+            else if (newStatus === 'analyzing') {
+              currentUiStatus = 'analyzing';
+              statusText.innerText = "Transcript complete. AI is drafting clinical insights...";
+              transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Transcript generated. Finalizing...</em></p>";
+              reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical report... (Takes about 10-15 seconds).</em></p>";
+            }
+            else if (newStatus === 'completed') { await renderFinalNotes(activeSessionRecordId, channel); } 
             else if (newStatus === 'failed') {
               reportContent.innerHTML = `<p style="color: red;">Cloud processing failed.</p>`;
-              statusText.innerText = "System Error."; 
-              statusPanel.className = 'status-panel';
-              processBtn.disabled = false;
-              releaseWakeLock();
-              supabaseClient.removeChannel(channel);
+              statusText.innerText = "System Error."; statusPanel.className = 'status-panel'; processBtn.disabled = false; releaseWakeLock(); supabaseClient.removeChannel(channel);
             }
-          })
-          .subscribe();
+          }).subscribe();
           
-        // 3. BACKUP POLLING (15 SECONDS)
         const pollInterval = setInterval(async () => {
-           if (statusPanel.className !== 'status-panel panel-processing') {
-              clearInterval(pollInterval);
-              return;
-           }
-           
+           if (statusPanel.className !== 'status-panel panel-processing') { clearInterval(pollInterval); return; }
            try {
-               const { data: checkData } = await supabaseClient
-                .from('session_notes')
-                .select('status')
-                .eq('id', activeSessionRecordId)
-                .single();
-                
+               const { data: checkData } = await supabaseClient.from('session_notes').select('status').eq('id', activeSessionRecordId).single();
                if (checkData) {
-                   if (checkData.status === 'analyzing' && currentUiStatus !== 'analyzing') {
+                   if (checkData.status === 'transcribing' && currentUiStatus !== 'transcribing') {
+                       currentUiStatus = 'transcribing';
+                       statusText.innerText = "Transcribing audio securely...";
+                       transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating high-fidelity transcript with AssemblyAI... (Usually takes a few minutes for long sessions).</em></p>";
+                   } else if (checkData.status === 'analyzing' && currentUiStatus !== 'analyzing') {
                        currentUiStatus = 'analyzing';
-                       statusText.innerText = "Analyzing audio... (This may take several minutes for long files)";
-                       transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating verbatim transcript with speaker labels...</em></p>";
-                       reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical session report simultaneously...</em></p>";
-                   } else if (checkData.status === 'completed') {
-                       clearInterval(pollInterval);
-                       await renderFinalNotes(activeSessionRecordId, channel);
-                   } else if (checkData.status === 'failed') {
-                       clearInterval(pollInterval);
-                       throw new Error("Cloud processing failed.");
-                   }
+                       statusText.innerText = "Transcript complete. AI is drafting clinical insights...";
+                       transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Transcript generated. Finalizing...</em></p>";
+                       reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical report... (Takes about 10-15 seconds).</em></p>";
+                   } else if (checkData.status === 'completed') { clearInterval(pollInterval); await renderFinalNotes(activeSessionRecordId, channel);
+                   } else if (checkData.status === 'failed') { clearInterval(pollInterval); throw new Error("Cloud processing failed."); }
                }
            } catch (err) {
-               clearInterval(pollInterval);
-               reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
-               statusText.innerText = "System Error."; 
-               statusPanel.className = 'status-panel';
-               processBtn.disabled = false;
-               releaseWakeLock();
-               supabaseClient.removeChannel(channel);
+               clearInterval(pollInterval); reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
+               statusText.innerText = "System Error."; statusPanel.className = 'status-panel'; processBtn.disabled = false; releaseWakeLock(); supabaseClient.removeChannel(channel);
            }
         }, 15000);
-    
       } catch (err) {
-        reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
-        statusText.innerText = "System Error."; 
-        statusPanel.className = 'status-panel';
-        processBtn.disabled = false;
-        releaseWakeLock();
+        reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`; statusText.innerText = "System Error."; statusPanel.className = 'status-panel'; processBtn.disabled = false; releaseWakeLock();
       }
     });
 
-    // ---------------------------------------------------------
-    // ARCHIVE DASHBOARD & SOFT DELETION
-    // ---------------------------------------------------------
     const archiveModal = document.getElementById('archiveModal');
     const archiveList = document.getElementById('archiveList');
     const searchArchiveInput = document.getElementById('searchArchiveInput');
@@ -688,12 +580,8 @@
       archiveList.innerHTML = '<p style="text-align: center;">Loading secure records...</p>';
       try {
         const safeQuery = escapeHTML(searchQuery);
-        let query = supabaseClient.from('session_notes')
-          .select('id, client_reference, created_at, report_text, transcript_text')
-          .is('deleted_at', null).order('created_at', { ascending: false });
-          
+        let query = supabaseClient.from('session_notes').select('id, client_reference, created_at, report_text, transcript_text').is('deleted_at', null).order('created_at', { ascending: false });
         if (safeQuery) { query = query.ilike('client_reference', `%${safeQuery}%`); }
-        
         const { data, error } = await query;
         if (error) throw error;
 
@@ -713,21 +601,9 @@
           else countdownHtml = `<span style="font-size: 12px; color: #ff3b30; font-weight: 600; background: rgba(255, 59, 48, 0.1); padding: 2px 8px; border-radius: 10px;">Pending Auto-Deletion</span>`;
           
           const safeClientRef = escapeHTML(record.client_reference);
-          
           const item = document.createElement('div');
           item.className = 'archive-item';
-          item.innerHTML = `
-            <div class="archive-details">
-              <strong>${safeClientRef}</strong>
-              <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                <span>${dateString}</span>${countdownHtml}
-              </div>
-            </div>
-            <div class="archive-actions">
-              <button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>
-              <button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button>
-            </div>
-          `;
+          item.innerHTML = `<div class="archive-details"><strong>${safeClientRef}</strong><div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;"><span>${dateString}</span>${countdownHtml}</div></div><div class="archive-actions"><button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button><button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button></div>`;
           archiveList.appendChild(item);
         });
       } catch (err) { archiveList.innerHTML = `<p style="color:red;">Error fetching archive: ${err.message}</p>`; }
@@ -739,13 +615,8 @@
       activeSessionRecordId = id; 
       archiveModal.classList.remove('active'); 
       document.getElementById('windowsContainer').classList.add('active');
-      
-      const cipherReport = atob(encodedReport);
-      const cipherTranscript = atob(encodedTranscript);
-
-      const rawReport = await decryptFromServer(cipherReport);
-      const rawTranscript = await decryptFromServer(cipherTranscript);
-
+      const rawReport = await decryptFromServer(atob(encodedReport));
+      const rawTranscript = await decryptFromServer(atob(encodedTranscript));
       document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
       document.getElementById('transcriptContent').innerHTML = marked.parse(rawTranscript);
       document.getElementById('status').innerText = "Loaded record from archive.";
@@ -756,19 +627,11 @@
       try {
         const { error } = await supabaseClient.from('session_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
-        
-        // Auto-clear workspace if deleting the active record
-        if (activeSessionRecordId === id) {
-            document.getElementById('resetBtn').click();
-        }
-        
+        if (activeSessionRecordId === id) document.getElementById('resetBtn').click();
         fetchArchive(searchArchiveInput.value.trim()); 
       } catch (err) { alert("Failed to delete record: " + err.message); }
     };
 
-    // ---------------------------------------------------------
-    // COPY / EXPORT UTILITIES
-    // ---------------------------------------------------------
     async function copyContent(elementId, btnElement) {
       const contentBox = document.getElementById(elementId);
       try {
