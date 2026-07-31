@@ -93,13 +93,14 @@
     
     .content-box { font-size: 11pt; color: #1c1c1e; flex-grow: 1; background: rgba(255, 255, 255, 0.4); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.4); overflow-y: auto; max-height: 600px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
-    /* UPDATED HEADER RENDERING RULES */
+    /* Strict formatting for H1, H2 and nested header values */
     .content-box h1 { font-size: 16pt; font-weight: normal; margin-top: 1.5em; margin-bottom: 0.5em; }
     .content-box h1 strong { font-weight: bold; }
     .content-box h2 { font-size: 14pt; font-weight: normal; margin-top: 1em; margin-bottom: 0.5em; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 4px; }
     .content-box h2 strong { font-weight: bold; }
-    .content-box h3 { font-size: 12pt; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+    .content-box .header-val { font-size: 11pt; font-weight: normal; }
     
+    .content-box h3 { font-size: 12pt; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
     .content-box ul { padding-left: 24px; margin-top: 0.5em; margin-bottom: 1em; }
     .content-box li { margin-bottom: 0.5em; }
     .content-box p { margin-top: 0; margin-bottom: 1em; }
@@ -394,7 +395,8 @@
       document.getElementById('locationInput').value = "";
       document.getElementById('attendeesInput').value = "";
       recordedAudioBlob = null; audioChunks = []; clearAudioDB();
-      activeSessionRecordId = null; 
+      activeSessionRecordId = null;
+      sessionStartTime = ""; sessionStopTime = ""; 
       document.getElementById('status').innerText = "Ready to record.";
       document.getElementById('timer').innerText = "00:00:00";
       document.getElementById('statusPanel').className = 'status-panel';
@@ -418,6 +420,7 @@
 
     let mediaRecorder; let audioChunks = []; let recordedAudioBlob = null;
     let mimeType = ''; let timerInterval; let secondsElapsed = 0; let wakeLock = null;
+    let sessionStartTime = ""; let sessionStopTime = "";
 
     async function requestWakeLock() { try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {} }
     function releaseWakeLock() { if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); } }
@@ -434,6 +437,10 @@
       try {
         await clearAudioDB();
         activeSessionRecordId = null;
+        
+        // Capture exact start time
+        sessionStartTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 16000 });
         audioChunks = [];
@@ -461,6 +468,7 @@
               mediaRecorder.stop(); 
               mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
             }
+            sessionStopTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             recordBtn.disabled = false; 
             stopBtn.disabled = true;
             timerDisplay.classList.remove('recording-active'); 
@@ -483,6 +491,9 @@
     });
 
     stopBtn.addEventListener('click', () => {
+      // Capture exact stop time
+      sessionStopTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
       if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); }
       recordBtn.disabled = false; stopBtn.disabled = true;
       timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
@@ -537,7 +548,9 @@
               therapistName: currentTherapistName,
               clientRef: clientRef,
               location: locationVal,
-              attendees: attendeesVal
+              attendees: attendeesVal,
+              timeStarted: sessionStartTime || "Not recorded",
+              timeFinished: sessionStopTime || "Not recorded"
           })
         });
         const ticketData = await ticketRes.json();
@@ -670,12 +683,41 @@
       } catch (err) { alert("Failed to delete record: " + err.message); }
     };
 
+    // UPDATED EXPORT FUNCTION: Programmatically enforces font sizes for the clipboard
     async function copyContent(elementId, btnElement) {
       const contentBox = document.getElementById(elementId);
+      
+      // Clone the node so we don't accidentally shrink the user's web UI
+      const clone = contentBox.cloneNode(true);
+      
+      // Inject rigid styling rules for H1 and H2 tags
+      clone.querySelectorAll('h1').forEach(el => {
+        el.style.fontSize = '16pt';
+        el.style.fontWeight = 'bold';
+        el.style.margin = '12pt 0 6pt 0';
+      });
+      
+      clone.querySelectorAll('h2').forEach(el => {
+        el.style.fontSize = '14pt';
+        el.style.fontWeight = 'bold';
+        el.style.margin = '10pt 0 6pt 0';
+      });
+      
+      // Force the values next to the bold titles down to standard size
+      clone.querySelectorAll('.header-val').forEach(el => {
+        el.style.fontSize = '11pt';
+        el.style.fontWeight = 'normal';
+      });
+
       try {
-        const clipboardItem = new ClipboardItem({ "text/plain": new Blob([contentBox.innerText], { type: "text/plain" }), "text/html": new Blob([contentBox.innerHTML], { type: "text/html" }) });
+        const clipboardItem = new ClipboardItem({ 
+          "text/plain": new Blob([clone.innerText], { type: "text/plain" }), 
+          "text/html": new Blob([clone.innerHTML], { type: "text/html" }) 
+        });
         await navigator.clipboard.write([clipboardItem]);
-        const orig = btnElement.innerText; btnElement.innerText = "Copied!"; setTimeout(() => btnElement.innerText = orig, 2000);
+        const orig = btnElement.innerText; 
+        btnElement.innerText = "Copied!"; 
+        setTimeout(() => btnElement.innerText = orig, 2000);
       } catch (err) { alert("Failed to copy rich text."); }
     }
 
