@@ -227,18 +227,21 @@
     <div class="modal-content">
       <button id="closeInfoBtn" class="modal-close">&times;</button>
       <h3>Information & Security</h3>
+      
       <h4>Quick Start Instructions</h4>
       <ol>
-        <li><strong>Prepare:</strong> Enter the client's initials and select your desired report template.</li>
-        <li><strong>Record:</strong> Tap the Record stone. Your device screen will automatically lock awake.</li>
+        <li><strong>Prepare:</strong> Enter the client's initials and select your desired report template. If you leave 'Location' or 'Attendees' blank, the AI will attempt to infer them from the conversation context.</li>
+        <li><strong>Record:</strong> Tap the Record stone. Your device screen will lock awake. A safety cutoff will automatically stop recording at exactly 2 hours.</li>
         <li><strong>Process:</strong> Tap Stop, then Generate. Keep this window open and active until your notes appear.</li>
-        <li><strong>Clear Workspace:</strong> After exporting your notes, tap 'Clear Session' to securely hide the record in your Archive.</li>
+        <li><strong>Clear Workspace:</strong> After copying your notes, tap 'Clear Session' to safely encrypt and hide the record in your Archive.</li>
       </ol>
-      <h4>Security Architecture Update</h4>
+      
+      <h4>Security, Privacy & Compliance</h4>
       <ul>
-        <li><strong>Server-Side Encryption at Rest:</strong> Notes are encrypted securely inside Cloud Run prior to being stored in Supabase, preventing database exposure risks.</li>
-        <li><strong>Crash Recovery:</strong> Session audio is silently cached to your device's IndexedDB while recording. If your browser crashes or reloads mid-session, your audio is preserved.</li>
-        <li><strong>Row Level Security (RLS):</strong> The database physically blocks access to any records that do not belong to your specific authenticated user token.</li>
+        <li><strong>Data Residency & APP 8:</strong> To fulfil cross-border privacy requirements, raw audio is transcribed temporarily via a strict GDPR-compliant data centre in Dublin, Ireland. <em>(Clinicians must ensure client intake forms provide consent for temporary overseas audio processing).</em></li>
+        <li><strong>Onshore Clinical Analysis:</strong> All semantic reasoning, transcript analysis, and report generation is processed strictly on onshore Google Vertex AI servers located in Sydney, Australia.</li>
+        <li><strong>HRIPA (NSW) Alignment:</strong> To comply with Health Privacy Principle 5 (Security), notes are subjected to server-side encryption via Cloud Run prior to storage. Database access is strictly sandboxed to your specific authenticated token using Row Level Security (RLS).</li>
+        <li><strong>Crash Recovery:</strong> Session audio is silently cached to your device's local storage while recording. If your browser crashes or reloads mid-session, your audio is securely preserved.</li>
       </ul>
     </div>
   </div>
