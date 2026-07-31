@@ -486,7 +486,11 @@
       if (!recordedAudioBlob) return;
       await requestWakeLock();
     
-      const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Client";
+      const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Unknown";
+      const selectedTemplate = document.getElementById('templateSelect').value;
+      const locationVal = escapeHTML(document.getElementById('locationInput').value.trim()) || "Not specified";
+      const attendeesVal = escapeHTML(document.getElementById('attendeesInput').value.trim()) || "None";
+
       statusPanel.className = 'status-panel panel-processing';
       processBtn.disabled = true;
       document.getElementById('windowsContainer').classList.add('active');
@@ -497,10 +501,19 @@
     
       try {
         statusText.innerText = "Encrypting and establishing secure link...";
+        
+        // --- THIS IS THE CRITICAL FIX FOR THE DROPDOWN ---
         const ticketRes = await fetch(WORKER_URL, { 
           method: 'POST', 
           headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ mimeType: mimeType })
+          body: JSON.stringify({ 
+              mimeType: mimeType, 
+              template: selectedTemplate,
+              therapistName: currentTherapistName,
+              clientRef: clientRef,
+              location: locationVal,
+              attendees: attendeesVal
+          })
         });
         const ticketData = await ticketRes.json();
         const targetFileName = String(ticketData.fileName); 
