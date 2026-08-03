@@ -48,8 +48,8 @@
     .input-field:focus { border-color: var(--primary); }
     .input-field::placeholder { color: #a8b8c2; font-weight: 400; }
 
-    /* Dynamically spaced controls ensuring mobile fit */
-    .controls { display: flex; gap: clamp(15px, 8vw, 45px); margin-bottom: 30px; justify-content: center; align-items: center; width: 100%; max-width: 450px; margin-left: auto; margin-right: auto; }
+    /* Controls Container */
+    .controls { display: flex; gap: clamp(15px, 8vw, 45px); margin-bottom: 30px; justify-content: center; align-items: center; width: 100%; max-width: 300px; margin-left: auto; margin-right: auto; }
     .action-btn { width: 75px; height: 75px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.15), inset 0 -4px 0 rgba(0,0,0,0.15); position: relative; }
     .action-btn svg { width: 34px; height: 34px; filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.2)); }
     .action-btn:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,0.2), inset 0 -4px 0 rgba(0,0,0,0.15); }
@@ -62,6 +62,8 @@
 
     .ui-btn { font-family: 'League Spartan', sans-serif; padding: 12px 24px; font-size: 18px; font-weight: 500; border: none; border-radius: 50px; cursor: pointer; color: white; transition: all 0.1s ease; transform: translateY(-4px); background-color: var(--primary); box-shadow: 0 6px 0px var(--primary-dark), 0 10px 15px rgba(0,0,0,0.1); width: 100%;}
     .ui-btn:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1); }
+    .start-session-btn { max-width: 450px; margin: 0 auto 30px auto; display: block; font-size: 20px; padding: 16px; background: linear-gradient(135deg, #0e7e89, #085a63); box-shadow: 0 6px 0px #053b41, 0 10px 15px rgba(0,0,0,0.2); }
+    .start-session-btn:active:not(:disabled) { box-shadow: 0 2px 0px #053b41, 0 4px 8px rgba(0,0,0,0.2); }
 
     .status-panel { background: rgba(255, 255, 255, 0.5); padding: 15px 20px; border-radius: 16px; font-size: 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255, 255, 255, 0.4); transition: box-shadow 0.4s ease; }
     .status-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
@@ -120,7 +122,7 @@
 
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 46, 63, 0.5); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
     .modal-overlay.active { opacity: 1; pointer-events: auto; }
-    .modal-content { background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 24px; padding: 30px; max-width: 650px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2); transform: translateY(20px); transition: transform 0.3s ease; position: relative; }
+    .modal-content { background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 24px; padding: 30px; max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2); transform: translateY(20px); transition: transform 0.3s ease; position: relative; }
     .modal-overlay.active .modal-content { transform: translateY(0); }
     .modal-close { position: absolute; top: 15px; right: 15px; background: rgba(10, 46, 63, 0.05); border: none; width: 32px; height: 32px; font-size: 20px; border-radius: 50%; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
     
@@ -199,10 +201,11 @@
         </div>
       </div>
 
-      <div class="controls">
-        <button id="recordBtn" class="action-btn record-style" title="Record">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>
-        </button>
+      <!-- Pre-Session Gateway Button -->
+      <button id="startSessionBtn" class="ui-btn start-session-btn">Start New Session</button>
+
+      <!-- Active Session Controls (Hidden initially) -->
+      <div class="controls" id="recordingControls" style="display: none;">
         <button id="pauseBtn" class="action-btn pause-style" title="Pause" disabled>
           <svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>
         </button>
@@ -213,7 +216,7 @@
 
       <div class="status-panel" id="statusPanel">
         <div class="status-row">
-          <span class="status-text" id="status">Ready to record.</span>
+          <span class="status-text" id="status">Ready to begin.</span>
           <span class="timer" id="timer">00:00:00</span>
         </div>
       </div>
@@ -241,6 +244,36 @@
     </div>
   </div>
 
+  <!-- Clinical Consent Gateway Modal -->
+  <div id="consentModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeConsentBtn" class="modal-close">&times;</button>
+      <h3>Session Consent</h3>
+      <p style="font-size: 15px; margin-bottom: 20px; color: #3a5a6b;">Please verbally confirm the following privacy guarantees with the client before engaging the microphone.</p>
+      
+      <div style="background: rgba(10, 46, 63, 0.05); padding: 18px; border-radius: 12px; margin-bottom: 25px;">
+        <ul style="margin: 0; padding-left: 20px; color: var(--text);">
+          <li style="margin-bottom: 12px;"><strong>Zero AI Training:</strong> This audio and text will never be used to train AI models.</li>
+          <li style="margin-bottom: 12px;"><strong>Strictly Confidential:</strong> Nobody else has access. Data is locked strictly to this clinic.</li>
+          <li style="margin-bottom: 12px;"><strong>Transient Audio:</strong> The raw audio file is permanently destroyed after processing.</li>
+          <li><strong>Encrypted Storage:</strong> Final text notes are heavily encrypted prior to database storage.</li>
+        </ul>
+      </div>
+
+      <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; margin-bottom: 35px; padding: 10px; border-radius: 8px; transition: background 0.2s; user-select: none;">
+        <input type="checkbox" id="consentCheckbox" style="width: 22px; height: 22px; margin-top: 2px; cursor: pointer;">
+        <span style="font-size: 16px; font-weight: 500; line-height: 1.4; color: var(--text);">I confirm the client understands these guarantees and consents to the session being recorded.</span>
+      </label>
+
+      <div style="display: flex; justify-content: center;">
+        <button id="modalRecordBtn" class="action-btn record-style" title="Confirm & Record" disabled>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Standard Info & Archive Modals -->
   <div id="archiveModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeArchiveBtn" class="modal-close">&times;</button>
@@ -261,14 +294,14 @@
       <h4>Quick Start Instructions</h4>
       <ol>
         <li><strong>Prepare:</strong> Enter the client's initials and select your desired report template. If you leave 'Location' or 'Attendees' blank, the AI will attempt to infer them from the conversation context.</li>
-        <li><strong>Record:</strong> Tap the Record button. Your device screen will lock awake. A safety cutoff will automatically stop recording at exactly 2 hours.</li>
+        <li><strong>Record:</strong> Tap "Start New Session" and complete the consent declaration. The device screen will lock awake. A safety cutoff will automatically stop recording at exactly 2 hours.</li>
         <li><strong>Process:</strong> Tap Stop & Generate. Keep this window open and active until your notes appear.</li>
         <li><strong>Clear Workspace:</strong> After copying your notes, tap 'Clear Session' to safely encrypt and hide the record in your Archive.</li>
       </ol>
       
       <h4>Security, Privacy & Compliance</h4>
       <ul>
-        <li><strong>Data Residency & APP 8:</strong> To fulfill cross-border privacy requirements, raw audio is transcribed temporarily via a strict GDPR-compliant data center in Dublin, Ireland. <em>(Clinicians must ensure client intake forms provide consent for temporary overseas audio processing).</em></li>
+        <li><strong>Data Residency & APP 8:</strong> To fulfill cross-border privacy requirements, raw audio is transcribed temporarily via a strict GDPR-compliant data center in Dublin, Ireland.</li>
         <li><strong>Onshore Clinical Analysis:</strong> All semantic reasoning, transcript analysis, and report generation is processed strictly on onshore Google Vertex AI servers located in Sydney, Australia.</li>
         <li><strong>HRIPA (NSW) Alignment:</strong> To comply with Health Privacy Principle 5 (Security), notes are subjected to server-side encryption via Cloud Run prior to storage. Database access is strictly sandboxed to your specific authenticated token using Row Level Security (RLS).</li>
         <li><strong>Crash Recovery:</strong> Session audio is silently cached to your device's local storage while recording. If your browser crashes or reloads mid-session, your audio is securely preserved.</li>
@@ -334,6 +367,11 @@
             recordedAudioBlob = recoveredBlob;
             mimeType = 'audio/webm';
             document.getElementById('recoveryBanner').classList.remove('active');
+            
+            // Reconfigure UI for recovered flow
+            document.getElementById('startSessionBtn').style.display = 'none';
+            document.getElementById('recordingControls').style.display = 'flex';
+            
             document.getElementById('status').innerText = "Session recovered. Ready to process.";
             document.getElementById('processBtn').disabled = false;
           };
@@ -430,15 +468,17 @@
       activeSessionRecordId = null;
       sessionStartTime = ""; sessionStopTime = ""; 
       
-      document.getElementById('status').innerText = "Ready to record.";
+      document.getElementById('status').innerText = "Ready to begin.";
       document.getElementById('timer').innerText = "00:00:00";
       document.getElementById('statusPanel').className = 'status-panel';
       
+      // Revert UI layout back to pre-session state
+      document.getElementById('startSessionBtn').style.display = 'block';
+      document.getElementById('recordingControls').style.display = 'none';
+      
       // Reset button states and styles
-      const recordBtn = document.getElementById('recordBtn');
       const pauseBtn = document.getElementById('pauseBtn');
       const processBtn = document.getElementById('processBtn');
-      recordBtn.disabled = false;
       pauseBtn.disabled = true;
       processBtn.disabled = true;
       pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
@@ -461,6 +501,28 @@
     document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('active'));
     document.getElementById('closeInfoBtn').addEventListener('click', () => infoModal.classList.remove('active'));
 
+    // --- NEW: Consent Gateway Logic ---
+    const consentModal = document.getElementById('consentModal');
+    const startSessionBtn = document.getElementById('startSessionBtn');
+    const closeConsentBtn = document.getElementById('closeConsentBtn');
+    const consentCheckbox = document.getElementById('consentCheckbox');
+    const modalRecordBtn = document.getElementById('modalRecordBtn');
+    const recordingControls = document.getElementById('recordingControls');
+
+    startSessionBtn.addEventListener('click', () => {
+      consentModal.classList.add('active');
+      consentCheckbox.checked = false;
+      modalRecordBtn.disabled = true;
+    });
+
+    closeConsentBtn.addEventListener('click', () => {
+      consentModal.classList.remove('active');
+    });
+
+    consentCheckbox.addEventListener('change', (e) => {
+      modalRecordBtn.disabled = !e.target.checked;
+    });
+
     let mediaRecorder; let audioChunks = []; let recordedAudioBlob = null;
     let mimeType = ''; let timerInterval; let secondsElapsed = 0; let wakeLock = null;
     let sessionStartTime = ""; let sessionStopTime = ""; let autoProcessOnStop = false;
@@ -469,17 +531,22 @@
     function releaseWakeLock() { if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); } }
     function formatTime(sec) { const h = Math.floor(sec / 3600).toString().padStart(2, '0'); const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0'); const s = (sec % 60).toString().padStart(2, '0'); return `${h}:${m}:${s}`; }
 
-    const recordBtn = document.getElementById('recordBtn');
     const pauseBtn = document.getElementById('pauseBtn');
     const processBtn = document.getElementById('processBtn');
     const statusText = document.getElementById('status');
     const timerDisplay = document.getElementById('timer');
     const statusPanel = document.getElementById('statusPanel');
 
-    recordBtn.addEventListener('click', async () => {
+    // The core recording logic is now triggered by the modal's Record button
+    modalRecordBtn.addEventListener('click', async () => {
       try {
         await clearAudioDB();
         activeSessionRecordId = null;
+        
+        // Hide Modal and Swap UI
+        consentModal.classList.remove('active');
+        startSessionBtn.style.display = 'none';
+        recordingControls.style.display = 'flex';
         
         sessionStartTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
@@ -517,7 +584,6 @@
               mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
             }
             sessionStopTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            recordBtn.disabled = false; 
             pauseBtn.disabled = true;
             processBtn.disabled = false;
             
@@ -538,7 +604,6 @@
         await requestWakeLock();
 
         statusText.innerText = "Recording session (Screen locked ON)...";
-        recordBtn.disabled = true; 
         pauseBtn.disabled = false; 
         processBtn.disabled = false;
         
@@ -552,7 +617,10 @@
         timerDisplay.classList.remove('paused-active');
         timerDisplay.classList.add('recording-active');
         statusPanel.className = 'status-panel panel-recording';
-      } catch (err) { statusText.innerText = "Error: Microphone access denied."; }
+      } catch (err) { 
+        statusText.innerText = "Error: Microphone access denied."; 
+        consentModal.classList.remove('active');
+      }
     });
 
     pauseBtn.addEventListener('click', () => {
@@ -579,7 +647,7 @@
                 mediaRecorder.stop();
                 mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
                 sessionStopTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                recordBtn.disabled = false; pauseBtn.disabled = true; processBtn.disabled = false;
+                pauseBtn.disabled = true; processBtn.disabled = false;
                 
                 pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
                 pauseBtn.classList.remove('record-style');
@@ -603,7 +671,6 @@
       }
     });
 
-    // The single handler to process notes, handling both actively recording and recovered scenarios
     processBtn.addEventListener('click', () => {
         if (mediaRecorder && (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused')) {
             autoProcessOnStop = true;
@@ -613,7 +680,6 @@
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
             
             // Adjust UI immediately while waiting for onstop callback
-            recordBtn.disabled = false;
             pauseBtn.disabled = true;
             processBtn.disabled = true;
             
