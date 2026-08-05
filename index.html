@@ -18,6 +18,7 @@
       --danger: #ff3b30; --danger-dark: #b32a22;
       --success: #34c759; --success-dark: #248a3d;
       --warning: #ff9500; --text: #0a2e3f; 
+      --teal: #0e7e89; --teal-dark: #085a63;
     }
     
     body { 
@@ -48,8 +49,8 @@
     .input-field:focus { border-color: var(--primary); }
     .input-field::placeholder { color: #a8b8c2; font-weight: 400; }
 
-    /* Controls Container */
-    .controls { display: flex; gap: clamp(15px, 8vw, 45px); margin-bottom: 30px; justify-content: center; align-items: center; width: 100%; max-width: 300px; margin-left: auto; margin-right: auto; }
+    /* Record / Pause Circular Buttons */
+    .controls { display: flex; gap: clamp(15px, 8vw, 45px); margin-bottom: 25px; justify-content: center; align-items: center; width: 100%; max-width: 250px; margin-left: auto; margin-right: auto; }
     .action-btn { width: 75px; height: 75px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 10px 25px rgba(0,0,0,0.15), inset 0 -4px 0 rgba(0,0,0,0.15); position: relative; }
     .action-btn svg { width: 34px; height: 34px; filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.2)); }
     .action-btn:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,0.2), inset 0 -4px 0 rgba(0,0,0,0.15); }
@@ -58,19 +59,24 @@
     
     .record-style { background: linear-gradient(135deg, #ff7e67, #ff4b4b); }
     .pause-style { background: linear-gradient(135deg, #ffd000, #ff9500); }
-    .process-style { background: linear-gradient(135deg, #4facfe, #00f2fe); }
 
+    /* The Standard UI Buttons */
     .ui-btn { font-family: 'League Spartan', sans-serif; padding: 12px 24px; font-size: 18px; font-weight: 500; border: none; border-radius: 50px; cursor: pointer; color: white; transition: all 0.1s ease; transform: translateY(-4px); background-color: var(--primary); box-shadow: 0 6px 0px var(--primary-dark), 0 10px 15px rgba(0,0,0,0.1); width: 100%;}
     .ui-btn:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 0px var(--primary-dark), 0 4px 8px rgba(0,0,0,0.1); }
+    
+    /* Dedicated Session Flow Buttons */
     .start-session-btn { max-width: 450px; margin: 0 auto 30px auto; display: block; font-size: 20px; padding: 16px; background: linear-gradient(135deg, #0e7e89, #085a63); box-shadow: 0 6px 0px #053b41, 0 10px 15px rgba(0,0,0,0.2); }
     .start-session-btn:active:not(:disabled) { box-shadow: 0 2px 0px #053b41, 0 4px 8px rgba(0,0,0,0.2); }
+    
+    .finish-session-btn { max-width: 400px; margin: 0 auto 30px auto; display: block; font-size: 20px; font-weight: 600; padding: 16px; background: linear-gradient(135deg, #0e7e89, #085a63); box-shadow: 0 6px 0px #053b41, 0 10px 15px rgba(0,0,0,0.2); }
+    .finish-session-btn:active:not(:disabled) { box-shadow: 0 2px 0px #053b41, 0 4px 8px rgba(0,0,0,0.2); }
+    .finish-session-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: translateY(0); box-shadow: 0 4px 10px rgba(0,0,0,0.1); filter: grayscale(50%); }
 
     .status-panel { background: rgba(255, 255, 255, 0.5); padding: 15px 20px; border-radius: 16px; font-size: 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255, 255, 255, 0.4); transition: box-shadow 0.4s ease; }
     .status-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
     .status-panel.panel-recording { animation: innerPulseRed 1.5s infinite alternate; }
     .status-panel.panel-paused { animation: innerPulseOrange 0.6s infinite alternate; }
     .status-panel.panel-stopped { box-shadow: inset 0 0 20px rgba(52, 199, 89, 0.4); }
-    .status-panel.panel-processing { box-shadow: inset 0 0 20px rgba(255, 149, 0, 0.5); }
     
     @keyframes innerPulseRed { 0% { box-shadow: inset 0 0 8px rgba(255, 59, 48, 0.2); } 100% { box-shadow: inset 0 0 25px rgba(255, 59, 48, 0.6); } }
     @keyframes innerPulseOrange { 0% { box-shadow: inset 0 0 8px rgba(255, 149, 0, 0.3); } 100% { box-shadow: inset 0 0 25px rgba(255, 149, 0, 0.85); } }
@@ -93,43 +99,30 @@
     
     #mainApp { display: none; }
 
-    .windows-container { display: flex; flex-direction: column; gap: 20px; display: none; }
-    .windows-container.active { display: flex; }
-    
-    .window-card { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column; }
-    .export-controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-    .export-btn { font-family: 'League Spartan', sans-serif; border: none; color: white; background-color: var(--success); padding: 8px 16px; font-size: 14px; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0px var(--success-dark); transform: translateY(-2px); transition: all 0.1s ease; }
-    .export-btn:active:not(:disabled) { box-shadow: 0 1px 0px var(--success-dark); transform: translateY(0); }
-    .export-btn.secondary { background-color: var(--primary); box-shadow: 0 4px 0px var(--primary-dark); }
-    .export-btn.secondary:active:not(:disabled) { box-shadow: 0 1px 0px var(--primary-dark); transform: translateY(0); }
-    .export-btn.danger { background-color: var(--danger); box-shadow: 0 4px 0px var(--danger-dark); }
-    .export-btn.danger:active:not(:disabled) { box-shadow: 0 1px 0px var(--danger-dark); transform: translateY(0); }
-    
-    .content-box { font-size: 11pt; color: #1c1c1e; flex-grow: 1; background: rgba(255, 255, 255, 0.4); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.4); overflow-y: auto; max-height: 600px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    
-    .content-box h1 { font-size: 16pt; font-weight: normal; margin-top: 1.5em; margin-bottom: 0.5em; }
-    .content-box h1 strong { font-weight: bold; }
-    .content-box h2 { font-size: 14pt; font-weight: normal; margin-top: 1em; margin-bottom: 0.5em; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 4px; }
-    .content-box h2 strong { font-weight: bold; }
-    .content-box .header-val { font-size: 11pt; font-weight: normal; }
-    
-    .content-box h3 { font-size: 12pt; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
-    .content-box ul { padding-left: 24px; margin-top: 0.5em; margin-bottom: 1em; }
-    .content-box li { margin-bottom: 0.5em; }
-    .content-box p { margin-top: 0; margin-bottom: 1em; }
-
-    #transcriptContainer { display: none; }
-
+    /* Modals & Overlays */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 46, 63, 0.5); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
     .modal-overlay.active { opacity: 1; pointer-events: auto; }
     .modal-content { background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 24px; padding: 30px; max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2); transform: translateY(20px); transition: transform 0.3s ease; position: relative; }
     .modal-overlay.active .modal-content { transform: translateY(0); }
     .modal-close { position: absolute; top: 15px; right: 15px; background: rgba(10, 46, 63, 0.05); border: none; width: 32px; height: 32px; font-size: 20px; border-radius: 50%; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
     
-    .modal-content h3 { font-family: 'Momo Trust Display', cursive; color: #0e7e89; font-size: 28px; margin-top: 0; margin-bottom: 20px; }
-    .modal-content h4 { font-size: 18px; margin-bottom: 10px; margin-top: 25px; border-bottom: 2px solid rgba(14, 126, 137, 0.2); padding-bottom: 8px; color: var(--text); }
-    .modal-content ul, .modal-content ol { padding-left: 20px; margin-bottom: 15px; }
-    .modal-content li { font-size: 15px; margin-bottom: 8px; color: #3a3a3c; }
+    .modal-content h3 { font-family: 'Momo Trust Display', cursive; color: var(--teal); font-size: 28px; margin-top: 0; margin-bottom: 20px; }
+
+    /* Upload Timer Specific UI */
+    .upload-lock-content { text-align: center; padding: 40px 20px; }
+    .upload-timer-container { position: relative; width: 140px; height: 140px; margin: 0 auto 25px auto; }
+    .upload-timer-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+    .upload-timer-bg { fill: none; stroke: rgba(14, 126, 137, 0.15); stroke-width: 10; }
+    .upload-timer-progress { fill: none; stroke: var(--teal); stroke-width: 10; stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.1s linear; stroke-linecap: round; }
+    .upload-timer-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; font-weight: 700; color: var(--text); font-family: monospace; }
+    .upload-title { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+    .upload-subtitle { font-size: 16px; color: #3a5a6b; margin-bottom: 25px; line-height: 1.4; }
+    .success-icon { display: none; width: 60px; height: 60px; margin: 0 auto 20px; color: var(--success); }
+
+    /* Profile / Settings / Archive Standard UI */
+    .settings-section { border-bottom: 1px solid rgba(10, 46, 63, 0.1); padding-bottom: 25px; margin-bottom: 20px; }
+    .settings-section h4 { margin-top: 0; font-size: 18px; margin-bottom: 10px; }
+    .settings-success { font-size: 13px; color: var(--success-dark); margin-top: 8px; display: none; font-weight: 500;}
     
     .archive-list { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
     .archive-item { background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(10, 46, 63, 0.1); border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -138,8 +131,18 @@
     .archive-actions { display: flex; gap: 8px; }
     .btn-small { padding: 6px 12px; font-size: 12px; border-radius: 20px; border: none; cursor: pointer; font-family: 'League Spartan', sans-serif; font-weight: 500; color: white; transition: all 0.1s ease; }
     .btn-view { background-color: var(--primary); }
+    .btn-edit { background-color: var(--warning); color: #7a4300; }
     .btn-delete { background-color: var(--danger); }
     .btn-small:hover { opacity: 0.9; }
+    
+    /* Export buttons */
+    .export-btn { font-family: 'League Spartan', sans-serif; border: none; color: white; background-color: var(--success); padding: 8px 16px; font-size: 14px; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0px var(--success-dark); transform: translateY(-2px); transition: all 0.1s ease; }
+    .export-btn:active:not(:disabled) { box-shadow: 0 1px 0px var(--success-dark); transform: translateY(0); }
+    .export-btn.secondary { background-color: var(--primary); box-shadow: 0 4px 0px var(--primary-dark); }
+    .export-btn.secondary:active:not(:disabled) { box-shadow: 0 1px 0px var(--primary-dark); transform: translateY(0); }
+    .export-btn.danger { background-color: var(--danger); box-shadow: 0 4px 0px var(--danger-dark); }
+    .export-btn.danger:active:not(:disabled) { box-shadow: 0 1px 0px var(--danger-dark); transform: translateY(0); }
+
   </style>
 </head>
 <body>
@@ -162,6 +165,7 @@
       <div class="menu-container">
         <button id="menuToggle" class="menu-toggle">☰</button>
         <div id="dropdownMenu" class="dropdown-menu">
+          <button id="profileBtn" class="nav-btn">Profile & Settings</button>
           <button id="archiveBtn" class="nav-btn">Archive</button>
           <button id="infoBtn" class="nav-btn">Info & Instructions</button>
           <button id="logoutBtn" class="nav-btn">Log Out</button>
@@ -205,13 +209,15 @@
       <button id="startSessionBtn" class="ui-btn start-session-btn">Start New Session</button>
 
       <!-- Active Session Controls (Hidden initially) -->
-      <div class="controls" id="recordingControls" style="display: none;">
-        <button id="pauseBtn" class="action-btn pause-style" title="Pause" disabled>
-          <svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>
-        </button>
-        <button id="processBtn" class="action-btn process-style" title="Stop & Generate" disabled>
-          <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg>
-        </button>
+      <div id="recordingControls" style="display: none; flex-direction: column;">
+        <div class="controls">
+          <button id="pauseBtn" class="action-btn pause-style" title="Pause" disabled>
+            <svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>
+          </button>
+        </div>
+        
+        <!-- NEW TEAL FINISH BUTTON -->
+        <button id="finishSessionBtn" class="ui-btn finish-session-btn" disabled>Finish Session & Secure Notes</button>
       </div>
 
       <div class="status-panel" id="statusPanel">
@@ -221,25 +227,106 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="windows-container" id="windowsContainer">
-      <div class="window-card">
-        <h2>Clinical Report</h2>
-        <div class="export-controls">
-          <button class="export-btn" onclick="copyContent('reportContent', this)">Copy Report</button>
-          <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
-          <button class="export-btn secondary" id="toggleTranscriptBtn">View Raw Transcript</button>
-          <button class="export-btn danger" id="resetBtn">Clear Session</button>
-        </div>
-        <div id="reportContent" class="content-box" contenteditable="true">Awaiting data...</div>
+  <!-- Upload Lock & Progress Modal -->
+  <div id="uploadLockModal" class="modal-overlay">
+    <div class="modal-content upload-lock-content">
+      
+      <!-- Timer State -->
+      <div id="uploadingState">
+          <div class="upload-title">Securing Session Data</div>
+          <div class="upload-subtitle">Uploading securely to the cloud. Please do not close the window.</div>
+          
+          <div class="upload-timer-container">
+            <svg class="upload-timer-svg" viewBox="0 0 100 100">
+              <circle class="upload-timer-bg" cx="50" cy="50" r="45"></circle>
+              <circle class="upload-timer-progress" id="timerProgressCircle" cx="50" cy="50" r="45"></circle>
+            </svg>
+            <div class="upload-timer-text" id="timerSecondsText">--s</div>
+          </div>
+          
+          <div style="font-size: 14px; color: #666;" id="uploadStatsText">Calculating network speed...</div>
       </div>
 
-      <div class="window-card" id="transcriptContainer">
-        <h2>Verbatim Transcript</h2>
-        <div class="export-controls">
-          <button class="export-btn" onclick="copyContent('transcriptContent', this)">Copy Transcript</button>
+      <!-- Success State -->
+      <div id="uploadSuccessState" style="display: none;">
+          <svg class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <div class="upload-title">Audio Secured & Processing</div>
+          <div class="upload-subtitle" style="margin-bottom: 35px;">
+              The AI is securely generating your clinical notes in the background.<br><br>
+              <strong>You may now safely clear the screen for your next client.</strong> The finalized report will appear in your Archive shortly.
+          </div>
+          <button id="clearScreenFromModalBtn" class="ui-btn start-session-btn" style="margin-bottom: 0;">Clear Screen for Next Client</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Profile & Settings Modal -->
+  <div id="profileModal" class="modal-overlay">
+    <div class="modal-content">
+      <button id="closeProfileBtn" class="modal-close">&times;</button>
+      <h3>Profile & Settings</h3>
+
+      <div class="settings-section">
+        <h4>Professional Identity</h4>
+        <p style="font-size: 13px; color: #666; margin-top: -5px; margin-bottom: 15px;">Your name is automatically inserted into your finalized clinical notes.</p>
+        <div class="field-group" style="margin-bottom: 12px;">
+          <label>First Name</label>
+          <input type="text" id="profileFirstName" class="input-field">
         </div>
-        <div id="transcriptContent" class="content-box" contenteditable="true"></div>
+        <div class="field-group" style="margin-bottom: 12px;">
+          <label>Last Name</label>
+          <input type="text" id="profileLastName" class="input-field">
+        </div>
+        <div class="field-group" style="margin-bottom: 12px;">
+          <label>Email Address</label>
+          <input type="email" id="profileEmail" class="input-field">
+        </div>
+        <button id="saveAccountBtn" class="export-btn secondary" style="margin-top:10px;">Update Identity</button>
+        <div id="accountMsg" class="settings-success"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Workflow Defaults</h4>
+        <p style="font-size: 13px; color: #666; margin-top: -5px; margin-bottom: 15px;">Automatically populate these fields when starting a new session.</p>
+        <div class="field-group" style="margin-bottom: 12px;">
+          <label>Default Template</label>
+          <select id="profileTemplate" class="input-field">
+            <option value="therapy">Art Therapy Report</option>
+            <option value="meeting">Meeting Notes</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin-bottom: 12px;">
+          <label>Default Location</label>
+          <input type="text" id="profileLocation" class="input-field" placeholder="e.g., Lismore Clinic">
+        </div>
+        <div class="field-group" style="margin-bottom: 12px;">
+          <label>Default Additional Attendees</label>
+          <input type="text" id="profileAttendees" class="input-field" placeholder="e.g., None">
+        </div>
+        <button id="saveDefaultsBtn" class="export-btn secondary" style="margin-top:10px;">Save Defaults</button>
+        <div id="defaultsMsg" class="settings-success"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Security</h4>
+        <div class="field-group" style="margin-bottom: 12px;">
+          <label>New Password</label>
+          <input type="password" id="profilePassword" class="input-field" placeholder="Leave blank to keep current password">
+        </div>
+        <button id="savePasswordBtn" class="export-btn danger" style="margin-top:10px;">Update Password</button>
+        <div id="passwordMsg" class="settings-success"></div>
+      </div>
+
+      <div class="settings-section" style="border-bottom:none; margin-bottom: 0; padding-bottom: 0;">
+        <h4>Data Management</h4>
+        <p style="font-size: 13px; color: #666; margin-top: -5px; margin-bottom: 15px;">Download a secure offline copy of all your archived clinical reports in one file.</p>
+        <button id="exportAllDataBtn" class="export-btn">Export All Archived Data (.txt)</button>
+        <div id="exportStatusMsg" style="font-size: 14px; font-weight: 600; color: var(--primary); margin-top: 12px;"></div>
       </div>
     </div>
   </div>
@@ -266,14 +353,14 @@
       </label>
 
       <div style="display: flex; justify-content: center;">
-        <button id="modalRecordBtn" class="action-btn record-style" title="Confirm & Record" disabled>
+        <button id="modalRecordBtn" class="action-btn" style="background: linear-gradient(135deg, #ff7e67, #ff4b4b);" title="Confirm & Record" disabled>
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Standard Info & Archive Modals -->
+  <!-- Standard Archive Modal -->
   <div id="archiveModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeArchiveBtn" class="modal-close">&times;</button>
@@ -286,6 +373,7 @@
     </div>
   </div>
 
+  <!-- Standard Info Modal -->
   <div id="infoModal" class="modal-overlay">
     <div class="modal-content">
       <button id="closeInfoBtn" class="modal-close">&times;</button>
@@ -293,20 +381,39 @@
       
       <h4>Quick Start Instructions</h4>
       <ol>
-        <li><strong>Prepare:</strong> Enter the client's initials and select your desired report template. If you leave 'Location' or 'Attendees' blank, the AI will attempt to infer them from the conversation context.</li>
-        <li><strong>Record:</strong> Tap "Start New Session" and complete the consent declaration. The device screen will lock awake. A safety cutoff will automatically stop recording at exactly 2 hours.</li>
-        <li><strong>Process:</strong> Tap Stop & Generate. Keep this window open and active until your notes appear.</li>
-        <li><strong>Clear Workspace:</strong> After copying your notes, tap 'Clear Session' to safely encrypt and hide the record in your Archive.</li>
+        <li><strong>Prepare:</strong> Enter the client's initials. Your defaults are pre-filled.</li>
+        <li><strong>Record:</strong> Tap "Start New Session" and complete the consent declaration. The device screen will lock awake. A safety cutoff automatically stops recording at 2 hours.</li>
+        <li><strong>Process:</strong> Tap "Finish Session & Secure Notes." The app will quickly upload the file to the cloud.</li>
+        <li><strong>Clear Workspace:</strong> Once the green success screen appears, you can immediately clear the screen for your next client. Notes will process remotely and appear in the Archive.</li>
       </ol>
       
       <h4>Security, Privacy & Compliance</h4>
       <ul>
         <li><strong>Data Residency & APP 8:</strong> To fulfill cross-border privacy requirements, raw audio is transcribed temporarily via a strict GDPR-compliant data center in Dublin, Ireland.</li>
         <li><strong>Onshore Clinical Analysis:</strong> All semantic reasoning, transcript analysis, and report generation is processed strictly on onshore Google Vertex AI servers located in Sydney, Australia.</li>
-        <li><strong>HRIPA (NSW) Alignment:</strong> To comply with Health Privacy Principle 5 (Security), notes are subjected to server-side encryption via Cloud Run prior to storage. Database access is strictly sandboxed to your specific authenticated token using Row Level Security (RLS).</li>
-        <li><strong>Crash Recovery:</strong> Session audio is silently cached to your device's local storage while recording. If your browser crashes or reloads mid-session, your audio is securely preserved.</li>
+        <li><strong>HRIPA (NSW) Alignment:</strong> To comply with Health Privacy Principle 5 (Security), notes are subjected to server-side encryption via Cloud Run prior to storage.</li>
       </ul>
     </div>
+  </div>
+
+  <!-- Modals for Viewing Completed Notes (Moved from main UI flow to purely Archive popups) -->
+  <div id="notesViewingModal" class="modal-overlay">
+      <div class="modal-content" style="max-width: 800px;">
+          <button id="closeNotesViewBtn" class="modal-close">&times;</button>
+          <div class="export-controls" style="margin-top: 15px;">
+            <button class="export-btn" onclick="copyContent('reportContent', this)">Copy Report</button>
+            <button class="export-btn" onclick="downloadContent('reportContent', 'Clinical_Report')">Download</button>
+            <button class="export-btn secondary" id="toggleTranscriptBtn">View Raw Transcript</button>
+          </div>
+          <div id="reportContent" class="content-box" contenteditable="true" style="margin-top: 15px;">Awaiting data...</div>
+          <div id="transcriptContainer" style="display: none; margin-top: 20px;">
+            <h4 style="margin-top:0;">Verbatim Transcript</h4>
+            <div class="export-controls">
+                <button class="export-btn" onclick="copyContent('transcriptContent', this)">Copy Transcript</button>
+            </div>
+            <div id="transcriptContent" class="content-box" contenteditable="true"></div>
+          </div>
+      </div>
   </div>
 
   <script>
@@ -373,7 +480,7 @@
             document.getElementById('recordingControls').style.display = 'flex';
             
             document.getElementById('status').innerText = "Session recovered. Ready to process.";
-            document.getElementById('processBtn').disabled = false;
+            document.getElementById('finishSessionBtn').disabled = false;
           };
           document.getElementById('recoverDiscardBtn').onclick = () => {
             clearAudioDB();
@@ -426,13 +533,29 @@
 
     function startSessionTimer(loginTime) { setInterval(() => { if ((Date.now() - parseInt(loginTime)) > 43200000) performLogout(); }, 60000); }
 
+    function applyProfileDefaults(userMeta) {
+        if (!userMeta) return;
+        const fName = userMeta.first_name || '';
+        const lName = userMeta.last_name || '';
+        const combined = (fName + ' ' + lName).trim();
+        if (combined) currentTherapistName = combined;
+
+        if (userMeta.default_template) document.getElementById('templateSelect').value = userMeta.default_template;
+        if (userMeta.default_location) document.getElementById('locationInput').value = userMeta.default_location;
+        if (userMeta.default_attendees) document.getElementById('attendeesInput').value = userMeta.default_attendees;
+    }
+
     async function checkSession() {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
         const loginTime = sessionStorage.getItem('loginTimestamp');
         if (loginTime && (Date.now() - parseInt(loginTime)) > 43200000) { await performLogout(); return; }
         currentUserId = session.user.id;
-        currentTherapistName = session.user.user_metadata?.display_name || session.user.email;
+        
+        const meta = session.user.user_metadata || {};
+        currentTherapistName = session.user.email;
+        applyProfileDefaults(meta);
+
         loginScreen.style.display = 'none'; mainApp.style.display = 'block';
         startSessionTimer(loginTime); checkRecovery();
       }
@@ -447,7 +570,11 @@
         if (data.session) {
           sessionStorage.setItem('loginTimestamp', Date.now().toString());
           currentUserId = data.session.user.id;
-          currentTherapistName = data.session.user.user_metadata?.display_name || data.session.user.email; 
+          
+          const meta = data.session.user.user_metadata || {};
+          currentTherapistName = data.session.user.email;
+          applyProfileDefaults(meta);
+          
           loginScreen.style.display = 'none'; mainApp.style.display = 'block';
           startSessionTimer(Date.now()); checkRecovery();
         }
@@ -456,14 +583,12 @@
 
     document.getElementById('logoutBtn').addEventListener('click', performLogout);
 
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      if (!confirm("Clear the screen for your next session? The current notes have been securely saved and can be retrieved from your Archive anytime.")) return;
-      document.getElementById('windowsContainer').classList.remove('active');
-      document.getElementById('transcriptContent').innerHTML = "Awaiting data...";
-      document.getElementById('reportContent').innerHTML = "Awaiting data...";
+    // Completely zeroes the UI back to ready state without alerts
+    async function resetScreen() {
       document.getElementById('clientRefInput').value = "";
-      document.getElementById('locationInput').value = "";
-      document.getElementById('attendeesInput').value = "";
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) applyProfileDefaults(session.user.user_metadata);
+      
       recordedAudioBlob = null; audioChunks = []; clearAudioDB();
       activeSessionRecordId = null;
       sessionStartTime = ""; sessionStopTime = ""; 
@@ -472,15 +597,13 @@
       document.getElementById('timer').innerText = "00:00:00";
       document.getElementById('statusPanel').className = 'status-panel';
       
-      // Revert UI layout back to pre-session state
       document.getElementById('startSessionBtn').style.display = 'block';
       document.getElementById('recordingControls').style.display = 'none';
       
-      // Reset button states and styles
       const pauseBtn = document.getElementById('pauseBtn');
-      const processBtn = document.getElementById('processBtn');
+      const finishBtn = document.getElementById('finishSessionBtn');
       pauseBtn.disabled = true;
-      processBtn.disabled = true;
+      finishBtn.disabled = true;
       pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
       pauseBtn.classList.remove('record-style');
       pauseBtn.classList.add('pause-style');
@@ -488,20 +611,129 @@
       
       if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); }
       clearInterval(timerInterval);
+    }
+    
+    // The clear button from the success modal explicitly fires the reset
+    document.getElementById('clearScreenFromModalBtn').addEventListener('click', () => {
+        resetScreen();
+        document.getElementById('uploadLockModal').classList.remove('active');
     });
 
+    // Notes Viewer Toggles
     const toggleTranscriptBtn = document.getElementById('toggleTranscriptBtn');
     const transcriptContainer = document.getElementById('transcriptContainer');
     toggleTranscriptBtn.addEventListener('click', () => {
-      if (transcriptContainer.style.display === 'flex') { transcriptContainer.style.display = 'none'; toggleTranscriptBtn.innerText = "View Raw Transcript"; } 
-      else { transcriptContainer.style.display = 'flex'; toggleTranscriptBtn.innerText = "Hide Raw Transcript"; }
+      if (transcriptContainer.style.display === 'block') { transcriptContainer.style.display = 'none'; toggleTranscriptBtn.innerText = "View Raw Transcript"; } 
+      else { transcriptContainer.style.display = 'block'; toggleTranscriptBtn.innerText = "Hide Raw Transcript"; }
+    });
+    
+    document.getElementById('closeNotesViewBtn').addEventListener('click', () => {
+        document.getElementById('notesViewingModal').classList.remove('active');
     });
 
+    // Info Modal
     const infoModal = document.getElementById('infoModal');
     document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('active'));
     document.getElementById('closeInfoBtn').addEventListener('click', () => infoModal.classList.remove('active'));
 
-    // --- NEW: Consent Gateway Logic ---
+    // --- PROFILE MANAGEMENT LOGIC ---
+    const profileModal = document.getElementById('profileModal');
+    document.getElementById('profileBtn').addEventListener('click', async () => {
+      profileModal.classList.add('active');
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        const meta = session.user.user_metadata || {};
+        document.getElementById('profileFirstName').value = meta.first_name || '';
+        document.getElementById('profileLastName').value = meta.last_name || '';
+        document.getElementById('profileEmail').value = session.user.email || '';
+        document.getElementById('profileTemplate').value = meta.default_template || 'therapy';
+        document.getElementById('profileLocation').value = meta.default_location || '';
+        document.getElementById('profileAttendees').value = meta.default_attendees || '';
+      }
+      document.getElementById('accountMsg').style.display = 'none';
+      document.getElementById('defaultsMsg').style.display = 'none';
+      document.getElementById('passwordMsg').style.display = 'none';
+      document.getElementById('exportStatusMsg').innerText = "";
+    });
+    document.getElementById('closeProfileBtn').addEventListener('click', () => profileModal.classList.remove('active'));
+
+    function showProfileMessage(elementId, msg, isError = false) {
+      const el = document.getElementById(elementId);
+      el.innerText = msg; el.style.color = isError ? 'var(--danger)' : 'var(--success-dark)';
+      el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    document.getElementById('saveAccountBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('saveAccountBtn'); btn.disabled = true;
+      const firstName = document.getElementById('profileFirstName').value.trim();
+      const lastName = document.getElementById('profileLastName').value.trim();
+      const newEmail = document.getElementById('profileEmail').value.trim();
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const { error: metaError } = await supabaseClient.auth.updateUser({ data: { first_name: firstName, last_name: lastName } });
+        if (metaError) throw metaError;
+        if (newEmail && newEmail !== session.user.email) {
+          const { error: emailError } = await supabaseClient.auth.updateUser({ email: newEmail });
+          if (emailError) throw emailError;
+          showProfileMessage('accountMsg', 'Identity saved. Check your new email inbox to confirm the address change.');
+        } else { showProfileMessage('accountMsg', 'Identity securely updated.'); }
+        applyProfileDefaults({ first_name: firstName, last_name: lastName });
+      } catch (err) { showProfileMessage('accountMsg', err.message, true); }
+      btn.disabled = false;
+    });
+
+    document.getElementById('saveDefaultsBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('saveDefaultsBtn'); btn.disabled = true;
+      const defTemplate = document.getElementById('profileTemplate').value;
+      const defLocation = document.getElementById('profileLocation').value.trim();
+      const defAttendees = document.getElementById('profileAttendees').value.trim();
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ data: { default_template: defTemplate, default_location: defLocation, default_attendees: defAttendees } });
+        if (error) throw error;
+        showProfileMessage('defaultsMsg', 'Workflow defaults saved.');
+        applyProfileDefaults({ default_template: defTemplate, default_location: defLocation, default_attendees: defAttendees });
+      } catch (err) { showProfileMessage('defaultsMsg', err.message, true); }
+      btn.disabled = false;
+    });
+
+    document.getElementById('savePasswordBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('savePasswordBtn'); const pass = document.getElementById('profilePassword').value;
+      if (!pass) { showProfileMessage('passwordMsg', 'Please enter a new password first.', true); return; }
+      btn.disabled = true;
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password: pass });
+        if (error) throw error;
+        document.getElementById('profilePassword').value = '';
+        showProfileMessage('passwordMsg', 'Password securely updated.');
+      } catch (err) { showProfileMessage('passwordMsg', err.message, true); }
+      btn.disabled = false;
+    });
+
+    document.getElementById('exportAllDataBtn').addEventListener('click', async () => {
+      const statusDiv = document.getElementById('exportStatusMsg'); const btn = document.getElementById('exportAllDataBtn');
+      btn.disabled = true; statusDiv.innerText = "Querying encrypted vault...";
+      try {
+        const { data, error } = await supabaseClient.from('session_notes').select('client_reference, created_at, report_text').is('deleted_at', null).order('created_at', { ascending: false });
+        if (error) throw error;
+        if (!data || data.length === 0) { statusDiv.innerText = "No active records found to export."; btn.disabled = false; return; }
+        let exportText = "CLINICAL SESSION EXPORT\nGenerated: " + new Date().toLocaleString() + "\n\n";
+        for (let i = 0; i < data.length; i++) {
+          statusDiv.innerText = `Decrypting clinical record ${i + 1} of ${data.length}...`;
+          const rawReport = await decryptFromServer(data[i].report_text); const dateStr = new Date(data[i].created_at).toLocaleString();
+          exportText += "====================================================\n";
+          exportText += `CLIENT REFERENCE: ${data[i].client_reference || 'Unknown'}\nDATE CREATED:     ${dateStr}\n`;
+          exportText += "====================================================\n\n" + rawReport + "\n\n\n";
+        }
+        statusDiv.innerText = "Building file...";
+        const blob = new Blob([exportText], { type: 'text/plain' }); const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `Offline_Archive_${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        statusDiv.innerText = "Export successful. File downloaded.";
+      } catch (err) { statusDiv.innerText = "Error during export: " + err.message; statusDiv.style.color = "var(--danger)"; }
+      btn.disabled = false; setTimeout(() => { if(statusDiv.innerText.includes("successful")) { statusDiv.innerText = ""; } }, 5000);
+    });
+
+    // --- CONSENT GATEWAY LOGIC ---
     const consentModal = document.getElementById('consentModal');
     const startSessionBtn = document.getElementById('startSessionBtn');
     const closeConsentBtn = document.getElementById('closeConsentBtn');
@@ -510,18 +742,10 @@
     const recordingControls = document.getElementById('recordingControls');
 
     startSessionBtn.addEventListener('click', () => {
-      consentModal.classList.add('active');
-      consentCheckbox.checked = false;
-      modalRecordBtn.disabled = true;
+      consentModal.classList.add('active'); consentCheckbox.checked = false; modalRecordBtn.disabled = true;
     });
-
-    closeConsentBtn.addEventListener('click', () => {
-      consentModal.classList.remove('active');
-    });
-
-    consentCheckbox.addEventListener('change', (e) => {
-      modalRecordBtn.disabled = !e.target.checked;
-    });
+    closeConsentBtn.addEventListener('click', () => { consentModal.classList.remove('active'); });
+    consentCheckbox.addEventListener('change', (e) => { modalRecordBtn.disabled = !e.target.checked; });
 
     let mediaRecorder; let audioChunks = []; let recordedAudioBlob = null;
     let mimeType = ''; let timerInterval; let secondsElapsed = 0; let wakeLock = null;
@@ -532,18 +756,16 @@
     function formatTime(sec) { const h = Math.floor(sec / 3600).toString().padStart(2, '0'); const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0'); const s = (sec % 60).toString().padStart(2, '0'); return `${h}:${m}:${s}`; }
 
     const pauseBtn = document.getElementById('pauseBtn');
-    const processBtn = document.getElementById('processBtn');
+    const finishBtn = document.getElementById('finishSessionBtn');
     const statusText = document.getElementById('status');
     const timerDisplay = document.getElementById('timer');
     const statusPanel = document.getElementById('statusPanel');
 
-    // The core recording logic is now triggered by the modal's Record button
     modalRecordBtn.addEventListener('click', async () => {
       try {
         await clearAudioDB();
         activeSessionRecordId = null;
         
-        // Hide Modal and Swap UI
         consentModal.classList.remove('active');
         startSessionBtn.style.display = 'none';
         recordingControls.style.display = 'flex';
@@ -554,9 +776,7 @@
         mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: 16000 });
         audioChunks = [];
         
-        mediaRecorder.ondataavailable = e => { 
-          if (e.data.size > 0) { audioChunks.push(e.data); saveChunkToDB(e.data); } 
-        };
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) { audioChunks.push(e.data); saveChunkToDB(e.data); } };
         
         mediaRecorder.onstop = () => {
           clearInterval(timerInterval);
@@ -565,10 +785,10 @@
           
           if (autoProcessOnStop) {
             autoProcessOnStop = false;
-            startProcessingPipeline();
+            startUploadAndLock();
           } else {
             statusText.innerText = "Audio captured. Ready to process.";
-            processBtn.disabled = false;
+            finishBtn.disabled = false;
           }
         };
 
@@ -577,127 +797,115 @@
         timerInterval = setInterval(() => { 
           secondsElapsed++; 
           timerDisplay.innerText = formatTime(secondsElapsed); 
-          
           if (secondsElapsed >= 7200) {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') { 
-              mediaRecorder.stop(); 
-              mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
-            }
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); }
             sessionStopTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            pauseBtn.disabled = true;
-            processBtn.disabled = false;
-            
-            // Revert pause button visuals
+            pauseBtn.disabled = true; finishBtn.disabled = false;
             pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
-            pauseBtn.classList.remove('record-style');
-            pauseBtn.classList.add('pause-style');
-            
-            timerDisplay.classList.remove('recording-active'); 
-            statusPanel.className = 'status-panel panel-stopped';
-            
-            setTimeout(() => { 
-              statusText.innerText = "2-Hour Safety Limit Reached. Audio captured."; 
-            }, 50);
+            pauseBtn.classList.remove('record-style'); pauseBtn.classList.add('pause-style');
+            timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
+            setTimeout(() => { statusText.innerText = "2-Hour Safety Limit Reached. Audio captured."; }, 50);
           }
         }, 1000);
         
         await requestWakeLock();
 
         statusText.innerText = "Recording session (Screen locked ON)...";
-        pauseBtn.disabled = false; 
-        processBtn.disabled = false;
-        
-        // Reset pause icon visually if re-recording
+        pauseBtn.disabled = false; finishBtn.disabled = false;
         pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
-        pauseBtn.classList.remove('record-style');
-        pauseBtn.classList.add('pause-style');
-        pauseBtn.title = "Pause";
+        pauseBtn.classList.remove('record-style'); pauseBtn.classList.add('pause-style'); pauseBtn.title = "Pause";
         
-        document.getElementById('windowsContainer').classList.remove('active');
-        timerDisplay.classList.remove('paused-active');
-        timerDisplay.classList.add('recording-active');
+        timerDisplay.classList.remove('paused-active'); timerDisplay.classList.add('recording-active');
         statusPanel.className = 'status-panel panel-recording';
-      } catch (err) { 
-        statusText.innerText = "Error: Microphone access denied."; 
-        consentModal.classList.remove('active');
-      }
+      } catch (err) { statusText.innerText = "Error: Microphone access denied."; consentModal.classList.remove('active'); }
     });
 
     pauseBtn.addEventListener('click', () => {
       if (mediaRecorder && mediaRecorder.state === 'recording') {
-          mediaRecorder.pause();
-          clearInterval(timerInterval);
-          statusText.innerText = "Session Paused.";
-          statusPanel.className = 'status-panel panel-paused';
-          timerDisplay.classList.remove('recording-active');
-          timerDisplay.classList.add('paused-active');
-          
-          // Switch to Record icon and Red color
+          mediaRecorder.pause(); clearInterval(timerInterval);
+          statusText.innerText = "Session Paused."; statusPanel.className = 'status-panel panel-paused';
+          timerDisplay.classList.remove('recording-active'); timerDisplay.classList.add('paused-active');
           pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>`;
-          pauseBtn.classList.remove('pause-style');
-          pauseBtn.classList.add('record-style');
-          pauseBtn.title = "Resume Recording";
-          
+          pauseBtn.classList.remove('pause-style'); pauseBtn.classList.add('record-style'); pauseBtn.title = "Resume Recording";
       } else if (mediaRecorder && mediaRecorder.state === 'paused') {
           mediaRecorder.resume();
           timerInterval = setInterval(() => { 
-            secondsElapsed++; 
-            timerDisplay.innerText = formatTime(secondsElapsed); 
+            secondsElapsed++; timerDisplay.innerText = formatTime(secondsElapsed); 
             if (secondsElapsed >= 7200) {
-                mediaRecorder.stop();
-                mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
+                mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
                 sessionStopTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                pauseBtn.disabled = true; processBtn.disabled = false;
-                
+                pauseBtn.disabled = true; finishBtn.disabled = false;
                 pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
-                pauseBtn.classList.remove('record-style');
-                pauseBtn.classList.add('pause-style');
-                
+                pauseBtn.classList.remove('record-style'); pauseBtn.classList.add('pause-style');
                 timerDisplay.classList.remove('recording-active'); statusPanel.className = 'status-panel panel-stopped';
                 setTimeout(() => { statusText.innerText = "2-Hour Safety Limit Reached. Audio captured."; }, 50);
             }
           }, 1000);
-          
-          statusText.innerText = "Recording session (Screen locked ON)...";
-          statusPanel.className = 'status-panel panel-recording';
-          timerDisplay.classList.remove('paused-active');
-          timerDisplay.classList.add('recording-active');
-          
-          // Switch back to Pause icon and Orange color
+          statusText.innerText = "Recording session (Screen locked ON)..."; statusPanel.className = 'status-panel panel-recording';
+          timerDisplay.classList.remove('paused-active'); timerDisplay.classList.add('recording-active');
           pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
-          pauseBtn.classList.remove('record-style');
-          pauseBtn.classList.add('pause-style');
-          pauseBtn.title = "Pause";
+          pauseBtn.classList.remove('record-style'); pauseBtn.classList.add('pause-style'); pauseBtn.title = "Pause";
       }
     });
 
-    processBtn.addEventListener('click', () => {
+    finishBtn.addEventListener('click', () => {
         if (mediaRecorder && (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused')) {
             autoProcessOnStop = true;
             sessionStopTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop());
             
-            mediaRecorder.stop();
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            
-            // Adjust UI immediately while waiting for onstop callback
-            pauseBtn.disabled = true;
-            processBtn.disabled = true;
-            
-            // Revert pause button visuals
+            pauseBtn.disabled = true; finishBtn.disabled = true;
             pauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>`;
-            pauseBtn.classList.remove('record-style');
-            pauseBtn.classList.add('pause-style');
+            pauseBtn.classList.remove('record-style'); pauseBtn.classList.add('pause-style');
             
-            timerDisplay.classList.remove('recording-active'); 
-            timerDisplay.classList.remove('paused-active'); 
+            timerDisplay.classList.remove('recording-active'); timerDisplay.classList.remove('paused-active'); 
             statusPanel.className = 'status-panel panel-stopped';
         } else if (recordedAudioBlob) {
-            // Processing a recovered session or a session safely stopped via 2-hour limit
-            startProcessingPipeline();
+            startUploadAndLock();
         }
     });
 
-    async function startProcessingPipeline() {
+    // --- UPLOAD LOGIC USING XHR FOR PROGRESS ---
+    function uploadBlobWithProgress(url, blob) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', url, true);
+            xhr.setRequestHeader('Content-Type', blob.type);
+            
+            const timerText = document.getElementById('timerSecondsText');
+            const progressCircle = document.getElementById('timerProgressCircle');
+            const statsText = document.getElementById('uploadStatsText');
+            
+            let startTime = Date.now();
+            
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total);
+                    
+                    // Update SVG stroke offset (283 is full circumference)
+                    const offset = 283 - (percentComplete * 283);
+                    progressCircle.style.strokeDashoffset = offset;
+                    
+                    // Calculate remaining time
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    if (elapsed > 0.5) { 
+                        const bytesPerSec = e.loaded / elapsed;
+                        const remainingBytes = e.total - e.loaded;
+                        const secondsRemaining = Math.max(1, Math.ceil(remainingBytes / bytesPerSec));
+                        
+                        timerText.innerText = secondsRemaining + "s";
+                        statsText.innerText = `${(e.loaded / (1024*1024)).toFixed(1)} MB of ${(e.total / (1024*1024)).toFixed(1)} MB secured...`;
+                    }
+                }
+            };
+            
+            xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error("Upload failed")); };
+            xhr.onerror = () => reject(new Error("Network error"));
+            xhr.send(blob);
+        });
+    }
+
+    async function startUploadAndLock() {
       await requestWakeLock();
     
       const clientRef = escapeHTML(document.getElementById('clientRefInput').value.trim()) || "Unknown";
@@ -705,17 +913,15 @@
       const locationVal = escapeHTML(document.getElementById('locationInput').value.trim()) || "[Infer location from transcript context if possible, otherwise leave blank]";
       const attendeesVal = escapeHTML(document.getElementById('attendeesInput').value.trim()) || "[Infer additional attendees from transcript context if possible, otherwise leave blank]";
 
-      statusPanel.className = 'status-panel panel-processing';
-      processBtn.disabled = true;
-      document.getElementById('windowsContainer').classList.add('active');
-      
-      const transcriptContent = document.getElementById('transcriptContent');
-      const reportContent = document.getElementById('reportContent');
-      let currentUiStatus = 'pending';
+      // Drop the lock modal
+      document.getElementById('uploadLockModal').classList.add('active');
+      document.getElementById('uploadingState').style.display = 'block';
+      document.getElementById('uploadSuccessState').style.display = 'none';
+      document.getElementById('timerProgressCircle').style.strokeDashoffset = 283;
+      document.getElementById('timerSecondsText').innerText = "--s";
     
       try {
-        statusText.innerText = "Encrypting and establishing secure link...";
-        
+        // 1. Establish Secure Link
         const ticketRes = await fetch(WORKER_URL, { 
           method: 'POST', 
           headers: { 'X-Action': 'get-upload-url', 'Content-Type': 'application/json' }, 
@@ -733,90 +939,32 @@
         const ticketData = await ticketRes.json();
         const targetFileName = String(ticketData.fileName); 
         
+        // 2. Register with Database
         const { data: newRecord, error: insertError } = await supabaseClient.from('session_notes')
           .insert({ therapist_id: currentUserId, client_reference: clientRef, file_id: targetFileName, status: 'pending' }).select().single();
           
         if (insertError) throw insertError;
         activeSessionRecordId = newRecord.id;
     
-        statusText.innerText = "Uploading audio vault chunk (Do not close tab yet)...";
-        await fetch(ticketData.uploadUrl, { method: 'PUT', headers: { 'Content-Type': mimeType }, body: recordedAudioBlob });
+        // 3. XHR Real-Time Upload
+        await uploadBlobWithProgress(ticketData.uploadUrl, recordedAudioBlob);
 
         clearAudioDB(); 
-    
-        statusText.innerText = "Upload complete. Secure processing initiated.";
-        transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Queuing secure processing...</em></p>";
-        reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Waiting for cloud processing to begin...</em></p>";
-    
-        const channel = supabaseClient.channel(`session-${activeSessionRecordId}`)
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'session_notes', filter: `id=eq.${activeSessionRecordId}` }, async (payload) => {
-            const newStatus = payload.new.status;
-            
-            if (newStatus === 'transcribing') {
-              currentUiStatus = 'transcribing';
-              statusText.innerText = "Transcribing audio securely...";
-              transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating high-fidelity transcript with AssemblyAI... (Usually takes a few minutes for long sessions).</em></p>";
-            } 
-            else if (newStatus === 'analyzing') {
-              currentUiStatus = 'analyzing';
-              statusText.innerText = "Transcript complete. AI is drafting clinical insights...";
-              transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Transcript generated. Finalizing...</em></p>";
-              reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical report... (Takes about 10-15 seconds).</em></p>";
-            }
-            else if (newStatus === 'completed') { await renderFinalNotes(activeSessionRecordId, channel); } 
-            else if (newStatus === 'failed') {
-              reportContent.innerHTML = `<p style="color: red;">Cloud processing failed.</p>`;
-              statusText.innerText = "System Error."; statusPanel.className = 'status-panel'; processBtn.disabled = false; releaseWakeLock(); supabaseClient.removeChannel(channel);
-            }
-          }).subscribe();
-          
-        const pollInterval = setInterval(async () => {
-           if (statusPanel.className !== 'status-panel panel-processing') { clearInterval(pollInterval); return; }
-           try {
-               const { data: checkData } = await supabaseClient.from('session_notes').select('status').eq('id', activeSessionRecordId).single();
-               if (checkData) {
-                   if (checkData.status === 'transcribing' && currentUiStatus !== 'transcribing') {
-                       currentUiStatus = 'transcribing';
-                       statusText.innerText = "Transcribing audio securely...";
-                       transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Generating high-fidelity transcript with AssemblyAI... (Usually takes a few minutes for long sessions).</em></p>";
-                   } else if (checkData.status === 'analyzing' && currentUiStatus !== 'analyzing') {
-                       currentUiStatus = 'analyzing';
-                       statusText.innerText = "Transcript complete. AI is drafting clinical insights...";
-                       transcriptContent.innerHTML = "<p style='color: #4a6fa5;'><em>Transcript generated. Finalizing...</em></p>";
-                       reportContent.innerHTML = "<p style='color: #4a6fa5;'><em>Drafting clinical report... (Takes about 10-15 seconds).</em></p>";
-                   } else if (checkData.status === 'completed') { clearInterval(pollInterval); await renderFinalNotes(activeSessionRecordId, channel);
-                   } else if (checkData.status === 'failed') { clearInterval(pollInterval); throw new Error("Cloud processing failed."); }
-               }
-           } catch (err) {
-               clearInterval(pollInterval); reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`;
-               statusText.innerText = "System Error."; statusPanel.className = 'status-panel'; processBtn.disabled = false; releaseWakeLock(); supabaseClient.removeChannel(channel);
-           }
-        }, 15000);
+        releaseWakeLock();
+        
+        // 4. Transform Modal to Success State
+        document.getElementById('uploadingState').style.display = 'none';
+        document.getElementById('uploadSuccessState').style.display = 'block';
+
       } catch (err) {
-        reportContent.innerHTML = `<p style="color: red;">${err.message}</p>`; statusText.innerText = "System Error."; statusPanel.className = 'status-panel'; processBtn.disabled = false; releaseWakeLock();
+        alert("Upload Error: " + err.message + "\n\nDon't worry, your audio is safely cached offline. Do not refresh. Click OK to dismiss and try finishing the session again.");
+        document.getElementById('uploadLockModal').classList.remove('active');
+        document.getElementById('finishSessionBtn').disabled = false;
+        releaseWakeLock();
       }
     }
 
-    async function renderFinalNotes(recordId, channelToClean) {
-      statusText.innerText = "Finalizing secure notes...";
-      try {
-        const { data: fullRecord, error } = await supabaseClient.from('session_notes').select('report_text, transcript_text').eq('id', recordId).single();
-        if (error || !fullRecord) { statusText.innerText = "Error pulling finalized text."; return; }
-
-        const rawReport = await decryptFromServer(fullRecord.report_text);
-        const rawTranscript = await decryptFromServer(fullRecord.transcript_text);
-
-        document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
-        document.getElementById('transcriptContent').innerHTML = marked.parse(rawTranscript);
-
-        statusText.innerText = "Session complete. Notes safely encrypted and saved.";
-        statusPanel.className = 'status-panel panel-stopped';
-        
-        releaseWakeLock();
-        if (channelToClean) supabaseClient.removeChannel(channelToClean);
-      } catch (err) { console.error("Render error:", err); }
-    }
-
+    // --- ARCHIVE LOGIC ---
     const archiveModal = document.getElementById('archiveModal');
     const archiveList = document.getElementById('archiveList');
     const searchArchiveInput = document.getElementById('searchArchiveInput');
@@ -828,7 +976,7 @@
       archiveList.innerHTML = '<p style="text-align: center;">Loading secure records...</p>';
       try {
         const safeQuery = escapeHTML(searchQuery);
-        let query = supabaseClient.from('session_notes').select('id, client_reference, created_at, report_text, transcript_text').is('deleted_at', null).order('created_at', { ascending: false });
+        let query = supabaseClient.from('session_notes').select('id, client_reference, created_at, status, report_text, transcript_text').is('deleted_at', null).order('created_at', { ascending: false });
         if (safeQuery) { query = query.ilike('client_reference', `%${safeQuery}%`); }
         const { data, error } = await query;
         if (error) throw error;
@@ -848,10 +996,33 @@
           else if (daysRemaining > 0) countdownHtml = `<span style="font-size: 12px; color: #ff9500; font-weight: 600; background: rgba(255, 149, 0, 0.1); padding: 2px 8px; border-radius: 10px;">Expires in ${daysRemaining} days</span>`;
           else countdownHtml = `<span style="font-size: 12px; color: #ff3b30; font-weight: 600; background: rgba(255, 59, 48, 0.1); padding: 2px 8px; border-radius: 10px;">Pending Auto-Deletion</span>`;
           
+          let statusBadge = "";
+          if (record.status !== 'completed') {
+              let label = record.status === 'failed' ? 'Failed' : 'Processing...';
+              let color = record.status === 'failed' ? 'var(--danger)' : 'var(--warning)';
+              statusBadge = `<span style="font-size: 12px; font-weight: 600; color: ${color}; padding-left: 10px;">${label}</span>`;
+          }
+
           const safeClientRef = escapeHTML(record.client_reference);
+          
           const item = document.createElement('div');
           item.className = 'archive-item';
-          item.innerHTML = `<div class="archive-details"><strong>${safeClientRef}</strong><div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;"><span>${dateString}</span>${countdownHtml}</div></div><div class="archive-actions"><button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button><button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button></div>`;
+          
+          let actionButtons = '';
+          if (record.status === 'completed') {
+              actionButtons = `<button class="btn-small btn-view" onclick="loadArchivedRecord('${record.id}', '${btoa(record.report_text)}', '${btoa(record.transcript_text)}')">View</button>`;
+          }
+          actionButtons += `<button class="btn-small btn-edit" onclick="renameRecord('${record.id}', '${safeClientRef.replace(/'/g, "\\'")}')">Rename</button>
+                            <button class="btn-small btn-delete" onclick="softDeleteRecord('${record.id}')">Delete</button>`;
+          
+          item.innerHTML = `
+            <div class="archive-details">
+                <strong>${safeClientRef} ${statusBadge}</strong>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                    <span>${dateString}</span>${countdownHtml}
+                </div>
+            </div>
+            <div class="archive-actions">${actionButtons}</div>`;
           archiveList.appendChild(item);
         });
       } catch (err) { archiveList.innerHTML = `<p style="color:red;">Error fetching archive: ${err.message}</p>`; }
@@ -859,58 +1030,43 @@
 
     searchArchiveInput.addEventListener('input', (e) => fetchArchive(e.target.value.trim()));
 
+    window.renameRecord = async function(id, currentName) {
+      const newName = prompt("Enter a new Client Reference / Name:", currentName);
+      if (newName !== null && newName.trim() !== "" && newName.trim() !== currentName) {
+        try {
+          const { error } = await supabaseClient.from('session_notes').update({ client_reference: newName.trim() }).eq('id', id);
+          if (error) throw error; fetchArchive(searchArchiveInput.value.trim()); 
+        } catch (err) { alert("Failed to rename record: " + err.message); }
+      }
+    };
+
     window.loadArchivedRecord = async function(id, encodedReport, encodedTranscript) {
-      activeSessionRecordId = id; 
-      archiveModal.classList.remove('active'); 
-      document.getElementById('windowsContainer').classList.add('active');
+      document.getElementById('notesViewingModal').classList.add('active');
       const rawReport = await decryptFromServer(atob(encodedReport));
       const rawTranscript = await decryptFromServer(atob(encodedTranscript));
       document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
       document.getElementById('transcriptContent').innerHTML = marked.parse(rawTranscript);
-      document.getElementById('status').innerText = "Loaded record from archive.";
     };
 
     window.softDeleteRecord = async function(id) {
       if (!confirm("WARNING: Are you absolutely sure you want to delete this record?\n\nThis action will delete it forever and you cannot get it back.")) return;
       try {
         const { error } = await supabaseClient.from('session_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
-        if (error) throw error;
-        if (activeSessionRecordId === id) document.getElementById('resetBtn').click();
-        fetchArchive(searchArchiveInput.value.trim()); 
+        if (error) throw error; fetchArchive(searchArchiveInput.value.trim()); 
       } catch (err) { alert("Failed to delete record: " + err.message); }
     };
 
     async function copyContent(elementId, btnElement) {
       const contentBox = document.getElementById(elementId);
-      
       const clone = contentBox.cloneNode(true);
-      
-      clone.querySelectorAll('h1').forEach(el => {
-        el.style.fontSize = '16pt';
-        el.style.fontWeight = 'bold';
-        el.style.margin = '12pt 0 6pt 0';
-      });
-      
-      clone.querySelectorAll('h2').forEach(el => {
-        el.style.fontSize = '14pt';
-        el.style.fontWeight = 'bold';
-        el.style.margin = '10pt 0 6pt 0';
-      });
-      
-      clone.querySelectorAll('.header-val').forEach(el => {
-        el.style.fontSize = '11pt';
-        el.style.fontWeight = 'normal';
-      });
+      clone.querySelectorAll('h1').forEach(el => { el.style.fontSize = '16pt'; el.style.fontWeight = 'bold'; el.style.margin = '12pt 0 6pt 0'; });
+      clone.querySelectorAll('h2').forEach(el => { el.style.fontSize = '14pt'; el.style.fontWeight = 'bold'; el.style.margin = '10pt 0 6pt 0'; });
+      clone.querySelectorAll('.header-val').forEach(el => { el.style.fontSize = '11pt'; el.style.fontWeight = 'normal'; });
 
       try {
-        const clipboardItem = new ClipboardItem({ 
-          "text/plain": new Blob([clone.innerText], { type: "text/plain" }), 
-          "text/html": new Blob([clone.innerHTML], { type: "text/html" }) 
-        });
+        const clipboardItem = new ClipboardItem({ "text/plain": new Blob([clone.innerText], { type: "text/plain" }), "text/html": new Blob([clone.innerHTML], { type: "text/html" }) });
         await navigator.clipboard.write([clipboardItem]);
-        const orig = btnElement.innerText; 
-        btnElement.innerText = "Copied!"; 
-        setTimeout(() => btnElement.innerText = orig, 2000);
+        const orig = btnElement.innerText; btnElement.innerText = "Copied!"; setTimeout(() => btnElement.innerText = orig, 2000);
       } catch (err) { alert("Failed to copy rich text."); }
     }
 
